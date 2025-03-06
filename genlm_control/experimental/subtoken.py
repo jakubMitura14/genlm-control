@@ -9,12 +9,6 @@ from genlm_control.constant import EOT
 
 @dataclass
 class SubTokenMarginal:
-    """
-    Parameterizes a subtoken potential in which
-    * complete(token) = logw_next[token]
-    * prefix(subtoken) = marginal over subtoken completions of complete
-    """
-
     subtoken_ws: np.array
     prefix2node: dict
     complete2node: dict
@@ -29,13 +23,19 @@ class SubTokenMarginal:
         node = self.prefix2node.get(tuple(subtoken_ctx), None)
         if node is None:
             return float("-inf")
-        return np.log(self.subtoken_ws[node])
+        w = self.subtoken_ws[node]
+        if w == 0:
+            return float("-inf")
+        return np.log(w)
 
     def complete(self, subtoken_ctx):
         node = self.complete2node.get(tuple(subtoken_ctx), None)
         if node is None:
             return float("-inf")
-        return np.log(self.subtoken_ws[node])
+        w = self.subtoken_ws[node]
+        if w == 0:
+            return float("-inf")
+        return np.log(w)
 
 
 class SubtokenPotential(Potential):
@@ -95,9 +95,9 @@ class SubtokenPotential(Potential):
     async def logw_next(self, subtoken_ctx, token_ctx):
         # TODO: optimize this.
         logws = self.alloc_logws()
-        subtoken_ctx_hash = tuple(subtoken_ctx)
-        subtoken = await self._get_subtoken_weights(subtoken_ctx_hash)
+        subtoken = await self._get_subtoken_weights(token_ctx)
 
+        subtoken_ctx_hash = tuple(subtoken_ctx)
         prefix_logw = subtoken.prefix(subtoken_ctx_hash)
         for i, x in enumerate(self.vocab):
             logws[i] = subtoken.prefix(subtoken_ctx_hash + (x,)) - prefix_logw
@@ -158,12 +158,3 @@ class SubtokenPotential(Potential):
 
     def clear_cache(self):
         self.cache.clear()
-
-    async def cleanup(self):  # TODO: move to genlm_backend
-        if task := getattr(self.trie, "_task", None):
-            if not task.done() and not task.cancelled():
-                task.cancel()
-                try:
-                    await task
-                except asyncio.CancelledError:
-                    pass

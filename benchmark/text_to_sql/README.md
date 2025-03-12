@@ -1,18 +1,27 @@
 Make sure `genlm-control` is installed (see the instructions in the library README).
 
-1. Install dependencies
+# 1. Install dependencies
+
+Install the dependencies in the `requirements.txt` file.
+
 ```bash
 pip install -r requirements.txt
 ```
 
-2. Download the Spider dataset in the `data` directory
+Download `nltk` data
+```bash
+python -m nltk.downloader punkt_tab
+```
+
+
+# 2. Download the Spider dataset in the `data` directory
 ```bash
 cd data
 gdown 'https://drive.google.com/u/0/uc?id=1403EGqzIDoHMdQF4c9Bkyl7dZLZ5Wt6J&export=download'
 unzip spider_data.zip
 ```
 
-3. Run inference
+# 3. Run inference
 
 From the `text_to_sql` directory, run inference with `run_inference.py`.
 
@@ -28,7 +37,7 @@ python run_inference.py \
     --lm_args ' {"engine_opts" : {"max_model_len" : 10000}}'
 ```
 
-4. Run evaluation
+# 4. Run evaluation
 ```bash
 python run_evaluation.py \
     --results_dir results/test \

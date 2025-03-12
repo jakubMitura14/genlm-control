@@ -112,10 +112,10 @@ def parse_args():
         help="Use the critic to check the table column references.",
     )
     parser.add_argument(
-        "--lm_backend",
+        "--lm_args",
         type=str,
-        default=None,  # use the default backend based on hardware
-        help="Backend to use for the language model, provided to PromptedLLM at initialization.",
+        default="{}",
+        help="Arguments to pass to the language model, provided to PromptedLLM at initialization.",
     )
 
     return parser.parse_args()
@@ -141,12 +141,12 @@ async def main():
 
     sampler_cache = {}
     critic_cache = {}
-    llm = PromptedLLM.from_name(args.model_name, backend=args.lm_backend)
+    llm = PromptedLLM.from_name(args.model_name, **json.loads(args.lm_args))
 
     filtered_dev_data = [
         (i, datum)
         for i, datum in enumerate(dev_data)
-        if args.dev_data_min <= i <= args.dev_data_max
+        if args.dev_data_min <= i < args.dev_data_max
     ]
 
     pbar = tqdm(
@@ -162,12 +162,10 @@ async def main():
 
         pbar.set_postfix(status=f"{i}")
 
-        llm.set_prompt_from_str(
-            llm.model.tokenizer.apply_chat_template(
-                prompt_formatter.format_openai(datum),
-                add_generation_prompt=True,
-                tokenize=False,
-            )
+        llm.prompt_ids = llm.model.tokenizer.apply_chat_template(
+            prompt_formatter.format_openai(datum),
+            add_generation_prompt=True,
+            tokenize=True,
         )
 
         # Load the grammar.
@@ -211,10 +209,11 @@ async def main():
         )
 
         metadata = {
-            "query": datum.query,
+            "gold": datum.query,
+            "utterance": datum.utterance,
             "schema_name": datum.schema_name,
             "model_name": args.model_name,
-            "lm_backend": args.lm_backend,
+            "lm_args": args.lm_args,
             "max_tokens": args.max_tokens,
             "sampler_name": args.sampler_name,
             "sampler_args": args.sampler_args,

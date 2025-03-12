@@ -139,25 +139,3 @@ def load_schemas(
         DbSchema.from_json(schema_json, str(db_path)) for schema_json in schemas_json
     ]
     return {schema.name: schema for schema in schemas}
-
-
-if __name__ == "__main__":
-    cosql_schemas = load_schemas(
-        "/Users/subhrroy/workspace/pyharbor/data/benchclamp/raw/CoSQL/tables.json",
-        "/Users/subhrroy/workspace/pyharbor/data/benchclamp/raw/CoSQL/database/",
-    )
-    with open(
-        "/Users/subhrroy/workspace/pyharbor/data/benchclamp/raw/CoSQL/database/db_schema_details.json",
-        "w",
-    ) as fp:
-        fp.write(jsons.dumps(cosql_schemas, cls=Dict[str, DbSchema]))
-
-    spider_schemas = load_schemas(
-        "/Users/subhrroy/workspace/pyharbor/data/benchclamp/raw/Spider/tables.json",
-        "/Users/subhrroy/workspace/pyharbor/data/benchclamp/raw/Spider/database/",
-    )
-    with open(
-        "/Users/subhrroy/workspace/pyharbor/data/benchclamp/raw/Spider/database/db_schema_details.json",
-        "w",
-    ) as fp:
-        fp.write(jsons.dumps(cosql_schemas, cls=Dict[str, DbSchema]))

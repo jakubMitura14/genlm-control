@@ -171,8 +171,11 @@ class BoolCFG(Potential):
         Returns:
             (float): Log weight for whether `context` is accepted by the CFG.
         """
-        w = self.model([*context, EOS])
-        return 0 if w.score else float("-inf")
+        logw = await self.prefix(context)
+        if logw == float("-inf"):
+            return float("-inf")
+        end_logws = await self.logw_next(context)
+        return logw + end_logws[EOS]
 
     async def prefix(self, context):
         """
@@ -185,10 +188,14 @@ class BoolCFG(Potential):
         Returns:
             (float): Log weight for whether `context` is accepted as a prefix by the CFG.
         """
-        if not context:  # FIX: this is a hack to handle the empty string because genlm-grammar doesn't support it
-            return 0
-        w = self.model(context)
-        return 0 if w.score else float("-inf")
+        logw = 0
+        for i in range(len(context)):
+            logws = await self.logw_next(context[:i])
+            next_token_logw = logws[context[i]]
+            if next_token_logw == float("-inf"):
+                return float("-inf")
+            logw += next_token_logw
+        return logw
 
     async def logw_next(self, context):
         """

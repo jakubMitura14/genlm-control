@@ -117,6 +117,12 @@ def parse_args():
         default="{}",
         help="Arguments to pass to the language model, provided to PromptedLLM at initialization.",
     )
+    parser.add_argument(
+        "--cache_clear_interval",
+        type=int,
+        default=100,
+        help="Interval to clear the parser caches.",
+    )
 
     return parser.parse_args()
 
@@ -145,6 +151,7 @@ async def main():
     dev_data, _, prompt_formatter = spider_setup(args.raw_spider_dir)
 
     sampler_cache = {}
+    bool_cfgs = []
     # critic_cache = {}
     llm = PromptedLLM.from_name(args.model_name, **json.loads(args.lm_args))
 
@@ -159,13 +166,17 @@ async def main():
     )
 
     for i, datum in pbar:
-        if not args.overwrite and os.path.exists(
-            os.path.join(args.output_dir, f"{i}_result.json")
-        ):
+        result_file = os.path.join(args.output_dir, f"{i}_result.pkl")
+
+        if not args.overwrite and os.path.exists(result_file):
             pbar.set_postfix(status=f"Skipped {i} (exists)")
             continue
 
         pbar.set_postfix(status=f"{i}")
+
+        if (i + 1) % args.cache_clear_interval == 0:
+            for bool_cfg in bool_cfgs:
+                bool_cfg.clear_cache()
 
         llm.prompt_ids = llm.model.tokenizer.apply_chat_template(
             prompt_formatter.format_openai(datum),
@@ -182,8 +193,9 @@ async def main():
         sampler_key = (grammar, args.sampler_name, args.sampler_args)
         if sampler_key not in sampler_cache:
             bool_cfg = BoolCFG.from_lark(grammar)
+            bool_cfgs.append(bool_cfg)
             sampler_cache[sampler_key] = get_sampler(args.sampler_name)(
-                llm, bool_cfg, **json.loads(args.sampler_args)
+                llm, bool_cfg, json.loads(args.sampler_args)
             )
         sampler = sampler_cache[sampler_key]
 
@@ -221,7 +233,7 @@ async def main():
             "sampler_args": args.sampler_args,
         }
 
-        with open(os.path.join(args.output_dir, f"{i}_result.pkl"), "wb") as f:
+        with open(result_file, "wb") as f:
             pickle.dump(
                 {
                     "metadata": metadata,

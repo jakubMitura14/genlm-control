@@ -14,7 +14,7 @@ if str(project_root) not in sys.path:
     sys.path.insert(0, str(project_root))
 
 from benchmark.util import TimedTokenSampler  # noqa: E402
-from benchmark.text_to_sql.potential import SpiderTableColumnVerifier  # noqa: E402
+# from benchmark.text_to_sql.potential import SpiderTableColumnVerifier  # noqa: E402
 
 from benchmark.text_to_sql.spider.schema import load_schemas  # noqa: E402
 from benchmark.text_to_sql.spider.dialogue import load_spider_data  # noqa: E402
@@ -121,6 +121,17 @@ def parse_args():
     return parser.parse_args()
 
 
+def spider_setup(raw_spider_dir):
+    raw_spider_dir = Path(raw_spider_dir)
+    dev_data = load_spider_data(raw_spider_dir / "dev.json")
+    spider_schemas = load_schemas(
+        schemas_path=raw_spider_dir / "tables.json", db_path=raw_spider_dir / "database"
+    )
+    train_data = load_spider_data(raw_spider_dir / "train_spider.json")
+    prompt_formatter = SpiderPromptFormatter(train_data, spider_schemas)
+    return dev_data, spider_schemas, prompt_formatter
+
+
 async def main():
     args = parse_args()
 
@@ -131,16 +142,10 @@ async def main():
     with open(arg_path, "w") as f:
         json.dump(vars(args), f, indent=4)
 
-    raw_spider_dir = Path(args.raw_spider_dir)
-    dev_data = load_spider_data(raw_spider_dir / "dev.json")
-    spider_schemas = load_schemas(
-        schemas_path=raw_spider_dir / "tables.json", db_path=raw_spider_dir / "database"
-    )
-    train_data = load_spider_data(raw_spider_dir / "train_spider.json")
-    prompt_formatter = SpiderPromptFormatter(train_data, spider_schemas)
+    dev_data, _, prompt_formatter = spider_setup(args.raw_spider_dir)
 
     sampler_cache = {}
-    critic_cache = {}
+    # critic_cache = {}
     llm = PromptedLLM.from_name(args.model_name, **json.loads(args.lm_args))
 
     filtered_dev_data = [
@@ -184,18 +189,15 @@ async def main():
 
         # Fetch or create the critic.
         if args.use_critic:
-            critic_key = (grammar, datum.schema_name)
-            if critic_key not in critic_cache:
-                critic_cache[critic_key] = SpiderTableColumnVerifier(
-                    grammar, spider_schemas[datum.schema_name]
-                )
-            critic = critic_cache[critic_key]
+            # critic_key = (grammar, datum.schema_name)
+            # if critic_key not in critic_cache:
+            #    critic_cache[critic_key] = SpiderTableColumnVerifier(
+            #        grammar, spider_schemas[datum.schema_name]
+            #    )
+            # critic = critic_cache[critic_key]
+            raise NotImplementedError("Critic not implemented")
         else:
             critic = None
-
-        # Check that the sampler and LLM prompts are the same.
-        # Mutability...
-        assert sampler.set_sampler.iter_potential.prompt == llm.prompt
 
         if args.time_sampler:
             sampler = TimedTokenSampler(sampler)

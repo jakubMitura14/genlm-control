@@ -33,7 +33,7 @@ class LasVegasTokenSampler(TokenSampler):
 
     async def sample(self, *args, **kwargs):
         if self.log_stats:
-            start_time = time.time()
+            start_time = time.process_time()
             sample_id = self._get_sample_id()
             self._calls[sample_id] = []
             kwargs["_sample_id"] = sample_id
@@ -41,7 +41,7 @@ class LasVegasTokenSampler(TokenSampler):
         result = await self._sample(*args, **kwargs)
 
         if self.log_stats:
-            self._total_times[sample_id] = time.time() - start_time
+            self._total_times[sample_id] = time.process_time() - start_time
 
         return result
 
@@ -78,13 +78,13 @@ class LasVegasTokenSampler(TokenSampler):
     async def get_logws(self, context, _sample_id=None):
         if self.log_stats:
             assert _sample_id is not None
-            start_time = time.time()
+            start_time = time.process_time()
             self._contexts[_sample_id] = context
 
         logws = await self.potential.logw_next(context)
 
         if self.log_stats:
-            self._logws_times[_sample_id] = time.time() - start_time
+            self._logws_times[_sample_id] = time.process_time() - start_time
 
         return self._prune_logws(logws) if self.prune_logws else logws
 

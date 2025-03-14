@@ -21,11 +21,21 @@ from benchmark.text_to_sql.spider.dialogue import load_spider_data  # noqa: E402
 from benchmark.text_to_sql.spider.prompt_formatter import SpiderPromptFormatter  # noqa: E402
 
 
-def get_sampler(sampler_name):
+def sampler_factory(sampler_name, llm, bool_cfg, sampler_args):
     if sampler_name == "eager":
         from genlm_control.sampler import eager_token_sampler
 
-        return eager_token_sampler
+        return eager_token_sampler(llm, bool_cfg, **sampler_args)
+    elif sampler_name == "direct":
+        from genlm_control.sampler import direct_token_sampler
+
+        return direct_token_sampler(
+            llm * bool_cfg.coerce(llm, f=b"".join), **sampler_args
+        )
+    elif sampler_name == "swar":
+        from genlm_control.experimental.token_sampler import SWARTokenSampler
+
+        return SWARTokenSampler(llm * bool_cfg.coerce(llm, f=b"".join), **sampler_args)
     else:
         raise ValueError(f"Unknown sampler: {sampler_name}")
 
@@ -117,6 +127,12 @@ def parse_args():
         default="{}",
         help="Arguments to pass to the language model, provided to PromptedLLM at initialization.",
     )
+    parser.add_argument(
+        "--cache_clear_interval",
+        type=int,
+        default=100,
+        help="Interval to clear the parser caches.",
+    )
 
     return parser.parse_args()
 
@@ -141,6 +157,7 @@ async def main():
 
     sampler_cache = {}
     critic_cache = {}
+    bool_cfgs = []
     llm = PromptedLLM.from_name(args.model_name, **json.loads(args.lm_args))
 
     filtered_dev_data = [
@@ -154,13 +171,17 @@ async def main():
     )
 
     for i, datum in pbar:
-        if not args.overwrite and os.path.exists(
-            os.path.join(args.output_dir, f"{i}_result.json")
-        ):
+        result_file = os.path.join(args.output_dir, f"{i}_result.pkl")
+
+        if not args.overwrite and os.path.exists(result_file):
             pbar.set_postfix(status=f"Skipped {i} (exists)")
             continue
 
         pbar.set_postfix(status=f"{i}")
+
+        if (i + 1) % args.cache_clear_interval == 0:
+            for bool_cfg in bool_cfgs:
+                bool_cfg.clear_cache()
 
         llm.prompt_ids = llm.model.tokenizer.apply_chat_template(
             prompt_formatter.format_openai(datum),
@@ -177,8 +198,9 @@ async def main():
         sampler_key = (grammar, args.sampler_name, args.sampler_args)
         if sampler_key not in sampler_cache:
             bool_cfg = BoolCFG.from_lark(grammar)
-            sampler_cache[sampler_key] = get_sampler(args.sampler_name)(
-                llm, bool_cfg, **json.loads(args.sampler_args)
+            bool_cfgs.append(bool_cfg)
+            sampler_cache[sampler_key] = sampler_factory(
+                args.sampler_name, llm, bool_cfg, json.loads(args.sampler_args)
             )
         sampler = sampler_cache[sampler_key]
 
@@ -193,10 +215,6 @@ async def main():
         else:
             critic = None
 
-        # Check that the sampler and LLM prompts are the same.
-        # Mutability...
-        assert sampler.set_sampler.iter_potential.prompt == llm.prompt
-
         if args.time_sampler:
             sampler = TimedTokenSampler(sampler)
 
@@ -206,6 +224,7 @@ async def main():
             max_tokens=args.max_tokens,
             ess_threshold=args.ess_threshold,
             json_path=os.path.join(args.output_dir, f"{i}_record.json"),
+            verbosity=1,
         )
 
         metadata = {
@@ -219,7 +238,7 @@ async def main():
             "sampler_args": args.sampler_args,
         }
 
-        with open(os.path.join(args.output_dir, f"{i}_result.pkl"), "wb") as f:
+        with open(result_file, "wb") as f:
             pickle.dump(
                 {
                     "metadata": metadata,

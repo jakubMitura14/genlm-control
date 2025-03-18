@@ -1,8 +1,10 @@
 import os
 import sys
 import json
+import time
 import pickle
 import asyncio
+import warnings
 import argparse
 from tqdm import tqdm
 from pathlib import Path
@@ -13,19 +15,65 @@ project_root = Path(__file__).resolve().parent.parent.parent
 if str(project_root) not in sys.path:
     sys.path.insert(0, str(project_root))
 
-from benchmark.util import TimedTokenSampler  # noqa: E402
 # from benchmark.text_to_sql.potential import SpiderTableColumnVerifier  # noqa: E402
 
 from benchmark.text_to_sql.spider.schema import load_schemas  # noqa: E402
 from benchmark.text_to_sql.spider.dialogue import load_spider_data  # noqa: E402
 from benchmark.text_to_sql.spider.prompt_formatter import SpiderPromptFormatter  # noqa: E402
 
+warnings.filterwarnings("once", category=RuntimeWarning)
 
-def get_sampler(sampler_name):
+os.environ["VLLM_ENGINE_ITERATION_TIMEOUT_S"] = "360"
+
+
+def make_sampler(sampler_name, llm, bool_cfg, sampler_args, time_sampler=False):
     if sampler_name == "eager":
-        from genlm_control.sampler import eager_token_sampler
+        from genlm_control.sampler import EagerSetSampler
+        from benchmark.util import LoggedSetTokenSampler
 
-        return eager_token_sampler
+        print("Loading EagerSetSampler")
+
+        return LoggedSetTokenSampler(
+            EagerSetSampler(llm, bool_cfg, **sampler_args), log_stats=time_sampler
+        )
+    elif sampler_name == "swar":
+        from genlm_control.experimental.vegas import GumbelMaxAdaptiveRejectionSampler
+
+        return GumbelMaxAdaptiveRejectionSampler(
+            llm,
+            bool_cfg.coerce(llm, f=b"".join),
+            **sampler_args,
+            log_stats=time_sampler,
+        )
+    elif sampler_name == "swor":
+        from genlm_control.experimental.vegas import WithoutReplacementSampler
+
+        return WithoutReplacementSampler(
+            llm,
+            bool_cfg.coerce(llm, f=b"".join),
+            **sampler_args,
+            log_stats=time_sampler,
+        )
+    elif sampler_name == "top-k":
+        from genlm_control.sampler import TopKSetSampler
+        from benchmark.util import LoggedSetTokenSampler
+
+        return LoggedSetTokenSampler(
+            TopKSetSampler(llm, bool_cfg, **sampler_args), log_stats=time_sampler
+        )
+    elif sampler_name == "rejection":
+        from genlm_control.experimental.vegas import RejectionSampler
+
+        return RejectionSampler(
+            llm,
+            bool_cfg.coerce(llm, f=b"".join),
+            **sampler_args,
+            log_stats=time_sampler,
+        )
+    elif sampler_name == "lm":
+        from genlm_control.sampler import DirectTokenSampler
+
+        return DirectTokenSampler(llm)
     else:
         raise ValueError(f"Unknown sampler: {sampler_name}")
 
@@ -123,6 +171,18 @@ def parse_args():
         default=100,
         help="Interval to clear the parser caches.",
     )
+    parser.add_argument(
+        "--verbosity",
+        type=int,
+        default=0,
+        help="Verbosity level for inference. When set to 1, particles are printed at each step.",
+    )
+    parser.add_argument(
+        "--timeout",
+        type=int,
+        default=180,
+        help="Timeout for the inference engine.",
+    )
 
     return parser.parse_args()
 
@@ -150,9 +210,9 @@ async def main():
 
     dev_data, _, prompt_formatter = spider_setup(args.raw_spider_dir)
 
+    cfg_cache = {}
     sampler_cache = {}
-    bool_cfgs = []
-    # critic_cache = {}
+    critic_cache = {}
     llm = PromptedLLM.from_name(args.model_name, **json.loads(args.lm_args))
 
     filtered_dev_data = [
@@ -175,7 +235,7 @@ async def main():
         pbar.set_postfix(status=f"{i}")
 
         if (i + 1) % args.cache_clear_interval == 0:
-            for bool_cfg in bool_cfgs:
+            for bool_cfg in cfg_cache.values():
                 bool_cfg.clear_cache()
 
         llm.prompt_ids = llm.model.tokenizer.apply_chat_template(
@@ -184,43 +244,50 @@ async def main():
             tokenize=True,
         )
 
-        # Load the grammar.
         grammar = open(
             os.path.join(args.grammar_dir, f"{datum.schema_name}.lark"), "r"
         ).read()
 
-        # Fetch or create the sampler.
+        cfg_key = (grammar, datum.schema_name)
         sampler_key = (grammar, args.sampler_name, args.sampler_args)
+        critic_key = (grammar, datum.schema_name)
+
+        if cfg_key not in cfg_cache:
+            cfg_cache[cfg_key] = BoolCFG.from_lark(grammar)
+        bool_cfg = cfg_cache[cfg_key]
+
         if sampler_key not in sampler_cache:
-            bool_cfg = BoolCFG.from_lark(grammar)
-            bool_cfgs.append(bool_cfg)
-            sampler_cache[sampler_key] = get_sampler(args.sampler_name)(
-                llm, bool_cfg, json.loads(args.sampler_args)
+            sampler_cache[sampler_key] = make_sampler(
+                args.sampler_name,
+                llm,
+                bool_cfg,
+                json.loads(args.sampler_args),
+                args.time_sampler,
             )
         sampler = sampler_cache[sampler_key]
 
-        # Fetch or create the critic.
+        critic = None
         if args.use_critic:
-            # critic_key = (grammar, datum.schema_name)
-            # if critic_key not in critic_cache:
-            #    critic_cache[critic_key] = SpiderTableColumnVerifier(
-            #        grammar, spider_schemas[datum.schema_name]
-            #    )
-            # critic = critic_cache[critic_key]
-            raise NotImplementedError("Critic not implemented")
-        else:
-            critic = None
+            if critic_key not in critic_cache:
+                critic_cache[critic_key] = bool_cfg.coerce(llm, f=b"".join)
+            critic = critic_cache[critic_key]
 
-        if args.time_sampler:
-            sampler = TimedTokenSampler(sampler)
+        start_time = time.time()
 
-        # Run engine with record saving.
-        sequences = await InferenceEngine(sampler, critic=critic)(
-            n_particles=args.n_particles,
-            max_tokens=args.max_tokens,
-            ess_threshold=args.ess_threshold,
-            json_path=os.path.join(args.output_dir, f"{i}_record.json"),
-        )
+        try:
+            sequences = await asyncio.wait_for(
+                InferenceEngine(sampler, critic=critic)(
+                    n_particles=args.n_particles,
+                    max_tokens=args.max_tokens,
+                    ess_threshold=args.ess_threshold,
+                    json_path=os.path.join(args.output_dir, f"{i}_record.json"),
+                    verbosity=args.verbosity,
+                ),
+                timeout=args.timeout,
+            )
+        except asyncio.TimeoutError:
+            print(f"Inference for example {i} timed out after {args.timeout} seconds")
+            sequences = None
 
         metadata = {
             "gold": datum.query,
@@ -231,25 +298,32 @@ async def main():
             "max_tokens": args.max_tokens,
             "sampler_name": args.sampler_name,
             "sampler_args": args.sampler_args,
+            "inference_time": time.time() - start_time,
         }
 
         with open(result_file, "wb") as f:
             pickle.dump(
                 {
                     "metadata": metadata,
-                    "contexts": sequences.contexts,
-                    "log_weights": sequences.log_weights,
+                    "contexts": sequences.contexts if sequences else None,
+                    "log_weights": sequences.log_weights if sequences else None,
                 },
                 f,
             )
 
         # Save proposal timing stats.
         if args.time_sampler:
-            assert len(sampler.sample_times) <= args.n_particles * args.max_tokens
-            timing_stats = sampler.get_timing_stats()
-            timing_stats["metadata"] = metadata
-            with open(os.path.join(args.output_dir, f"{i}_timing.json"), "w") as f:
-                json.dump(timing_stats, f)
+            if hasattr(sampler, "get_stats"):
+                stats = sampler.get_stats()
+                stats["metadata"] = metadata
+                with open(os.path.join(args.output_dir, f"{i}_stats.pkl"), "wb") as f:
+                    pickle.dump(stats, f)
+                sampler._reset_stats()
+            else:
+                warnings.warn("Sampler does not support timing stats", RuntimeWarning)
+
+        if hasattr(sampler, "_save_cache"):
+            sampler._save_cache()
 
 
 if __name__ == "__main__":

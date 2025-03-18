@@ -42,6 +42,7 @@ class LasVegasTokenSampler(TokenSampler):
 
         if self.log_stats:
             self._total_times[sample_id] = time.process_time() - start_time
+            self._results[sample_id] = result
 
         return result
 
@@ -56,11 +57,11 @@ class LasVegasTokenSampler(TokenSampler):
             if token is self.target.eos:
                 logscore = await self.condition.complete(context)
                 if self.log_stats:
-                    self._calls[_sample_id].append(("complete", logscore))
+                    self._calls[_sample_id].append(("complete", logscore, token))
             else:
                 logscore = await self.condition.prefix(context + [token])
                 if self.log_stats:
-                    self._calls[_sample_id].append(("prefix", logscore))
+                    self._calls[_sample_id].append(("prefix", logscore, token))
             assert logscore in {-np.inf, 0}, "`condition` must be Boolean"
         else:
             logscore = -np.inf
@@ -78,8 +79,8 @@ class LasVegasTokenSampler(TokenSampler):
     async def get_logws(self, context, _sample_id=None):
         if self.log_stats:
             assert _sample_id is not None
+            self._contexts[_sample_id] = list(context)
             start_time = time.process_time()
-            self._contexts[_sample_id] = context
 
         logws = await self.potential.logw_next(context)
 
@@ -116,11 +117,12 @@ class LasVegasTokenSampler(TokenSampler):
         self._contexts = {}
         self._total_times = {}
         self._logws_times = {}
+        self._results = {}
 
     def get_stats(self):
         if not self.log_stats:
             raise ValueError("Logging is not enabled")
-        keys = ["calls", "contexts", "logws_times", "total_times"]
+        keys = ["calls", "contexts", "logws_times", "total_times", "results"]
         stats = {k: [] for k in keys}
         for sample_id in range(self._sample_id + 1):
             for key in keys:
@@ -156,7 +158,8 @@ class RejectionSampler(LasVegasTokenSampler):
         return tok, logw, logp
 
 
-class GumbelMaxRejectionSampler(LasVegasTokenSampler):
+class WithoutReplacementSampler(LasVegasTokenSampler):
+    # Sampling without replacement.
     def __init__(self, potential, condition, seed=42, **kwargs):
         super().__init__(potential, condition, **kwargs)
         self.rng = np.random.default_rng(seed=seed)
@@ -180,7 +183,7 @@ class GumbelMaxRejectionSampler(LasVegasTokenSampler):
                     logtau = keys[item]
                     break  # Break when we've accepted two tokens.
 
-        assert tok is not None, "No token was accepted"
+        assert tok is not None, "No token was accepted"  # TODO: return EOS, -inf
 
         logp0 = logps[tok]
         logw = logZ + logp0
@@ -189,6 +192,9 @@ class GumbelMaxRejectionSampler(LasVegasTokenSampler):
             logw -= log1mexp(-np.exp(logp0 - logtau))
 
         return tok, logw, logp0
+
+
+GumbelMaxRejectionSampler = WithoutReplacementSampler
 
 
 class AdaptiveRejectionSampler(LasVegasTokenSampler):
@@ -240,7 +246,9 @@ class GumbelMaxAdaptiveRejectionSampler(LasVegasTokenSampler):
 
         tok, nrej, logp0 = None, 0, []
         for _ in range(2):
-            keys = logps - np.log(-np.log(self.rng.random((self.V,))))
+            keys = logps - np.log(
+                -np.log(self.rng.random((self.V,)))
+            )  # throw this into init
             order = np.argsort(-keys)
             for rank in range(logps.size):
                 item = order[rank]

@@ -115,6 +115,8 @@ async def test_wcfg_from_string():
     pot_spawned = pot.spawn()
     assert pot_spawned.cfg == pot.cfg
 
+    pot.clear_cache()
+
 
 @pytest.mark.asyncio
 async def test_bcfg_from_lark():
@@ -136,3 +138,5 @@ async def test_bcfg_from_lark():
 
     pot_spawned = pot.spawn()
     assert pot_spawned.cfg == pot.cfg
+
+    pot.clear_cache()

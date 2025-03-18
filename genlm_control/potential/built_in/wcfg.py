@@ -171,11 +171,7 @@ class BoolCFG(Potential):
         Returns:
             (float): Log weight for whether `context` is accepted by the CFG.
         """
-        logw = await self.prefix(context)
-        if logw == float("-inf"):
-            return float("-inf")
-        end_logws = await self.logw_next(context)
-        return logw + end_logws[EOS]
+        return 0 if self.model([*context, EOS]).score else float("-inf")
 
     async def prefix(self, context):
         """
@@ -188,14 +184,9 @@ class BoolCFG(Potential):
         Returns:
             (float): Log weight for whether `context` is accepted as a prefix by the CFG.
         """
-        logw = 0
-        for i in range(len(context)):
-            logws = await self.logw_next(context[:i])
-            next_token_logw = logws[context[i]]
-            if next_token_logw == float("-inf"):
-                return float("-inf")
-            logw += next_token_logw
-        return logw
+        if not context:
+            return 0
+        return 0 if self.model(context).score else float("-inf")
 
     async def logw_next(self, context):
         """
@@ -229,6 +220,10 @@ class BoolCFG(Potential):
             )
             Ws.append(self.make_lazy_weights(log_ws))
         return Ws
+
+    def clear_cache(self):
+        """Clear the internal cache of the parser."""
+        self.model.clear_cache()
 
     def spawn(self):
         """Spawn a new BoolCFG."""

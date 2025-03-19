@@ -39,10 +39,14 @@ def posterior_weighted_eval(contexts, log_weights, gold, db, utterance):
     assert len(contexts) == len(probs)
 
     for context, p in zip(contexts, probs):
-        if isinstance(context[-1], EndOfSequence):
-            pred = b"".join(context[:-1]).decode("utf-8")
-        else:
-            pred = b"".join(context).decode("utf-8")
+        ctx = context[:-1] if isinstance(context[-1], EndOfSequence) else context
+
+        try:
+            pred = b"".join(ctx).decode("utf-8")
+        except UnicodeDecodeError:
+            w_acc = 0
+            particle_results.append((context, w_acc))
+            continue
 
         if np.isnan(p):
             w_acc = 0
@@ -89,7 +93,7 @@ def main():
     parser.add_argument(
         "--raw_spider_dir",
         type=str,
-        required=True,
+        default="data/spider_data",
         help="Path to the raw Spider dataset",
     )
     parser.add_argument(
@@ -115,6 +119,11 @@ def main():
             f"Raw Spider dataset directory not found: {raw_spider_dir}"
         )
 
+    print(
+        "Total inference time (min): ",
+        sum([datum["metadata"]["inference_time"] for datum in data]) / 60,
+    )
+
     if args.n_workers > 1:
         with ProcessPoolExecutor(
             initializer=initialize_worker,
@@ -131,10 +140,25 @@ def main():
         initialize_worker(raw_spider_dir, args.timeout)
         results = [eval_wrapper(datum) for datum in tqdm(data)]
 
-    print("Mean accuracy: ", sum([r["result"] for r in results]) / len(results))
+    mean, lower, upper = mean_ci([r["result"] for r in results])
+    print(f"Mean accuracy: {round(mean, 4)} ({round(lower, 2)}, {round(upper, 2)})")
 
     with open(args.output_pkl, "wb") as f:
         pickle.dump(results, f)
+
+
+def mean_ci(values, ci=0.95, n_bootstrap=10000):
+    mean = np.mean(values)
+    bootstrap_means = []
+
+    for _ in range(n_bootstrap):
+        bootstrap_sample = np.random.choice(values, size=len(values), replace=True)
+        bootstrap_means.append(np.mean(bootstrap_sample))
+
+    lower_percentile = (1 - ci) / 2 * 100
+    upper_percentile = (1 + ci) / 2 * 100
+    lower, upper = np.percentile(bootstrap_means, [lower_percentile, upper_percentile])
+    return mean, lower, upper
 
 
 if __name__ == "__main__":

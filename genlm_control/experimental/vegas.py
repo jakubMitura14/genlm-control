@@ -234,9 +234,10 @@ class AdaptiveRejectionSampler(LasVegasTokenSampler):
 class GumbelMaxAdaptiveRejectionSampler(LasVegasTokenSampler):
     """Sampling with adaptive replacement"""
 
-    def __init__(self, potential, condition, seed=42, **kwargs):
+    def __init__(self, potential, condition, seed=42, proper_weights=True, **kwargs):
         super().__init__(potential, condition, **kwargs)
         self.rng = np.random.default_rng(seed=seed)
+        self.proper_weights = proper_weights
 
     async def _sample(self, context, verbosity=0, _sample_id=None):
         logws = await self.get_logws(context, _sample_id)
@@ -261,6 +262,9 @@ class GumbelMaxAdaptiveRejectionSampler(LasVegasTokenSampler):
                     if tok is None:
                         logp0.append(logps[item])
                     logps[item] = -np.inf
+
+            if not self.proper_weights:
+                return tok, 0, np.nan
 
         assert tok is not None, "No token was accepted"
 

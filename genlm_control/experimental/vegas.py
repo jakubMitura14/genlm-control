@@ -264,9 +264,17 @@ class GumbelMaxAdaptiveRejectionSampler(LasVegasTokenSampler):
                     logps[item] = -np.inf
 
             if not self.proper_weights:
+                if tok is None:
+                    # Check if all logps are -np.inf
+                    non_inf_indices = np.where(logps != -np.inf)[0]
+                    assert len(non_inf_indices) == 0, (
+                        f"Expected all logps to be -np.inf, but found values at indices: {non_inf_indices}"
+                    )
+                    tok = self.target.eos
                 return tok, 0, np.nan
 
-        assert tok is not None, "No token was accepted"
+        if tok is None:  # No token was accepted, return EOS and kill the particle.
+            return self.target.eos, float("-inf"), np.nan
 
         if not logp0:  # Success on first try.
             logw = logZ - np.log(nrej + 1)

@@ -271,7 +271,7 @@ class GumbelMaxAdaptiveRejectionSampler(LasVegasTokenSampler):
                         f"Expected all logps to be -np.inf, but found values at indices: {non_inf_indices}"
                     )
                     tok = self.target.eos
-                return tok, 0, np.nan
+                return tok, -float("inf"), np.nan
 
         if tok is None:  # No token was accepted, return EOS and kill the particle.
             return self.target.eos, float("-inf"), np.nan

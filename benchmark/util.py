@@ -6,6 +6,61 @@ from genlm_control.sampler.set import SetSampler
 from genlm_control.sampler.token import TokenSampler
 
 
+def make_sampler(sampler_name, llm, bool_cfg, sampler_args, time_sampler=False):
+    if sampler_name == "eager":
+        from genlm_control.sampler import EagerSetSampler
+        from benchmark.util import LoggedSetTokenSampler
+
+        return LoggedSetTokenSampler(
+            EagerSetSampler(llm, bool_cfg, **sampler_args), log_stats=time_sampler
+        )
+    elif sampler_name == "swar":
+        from genlm_control.experimental.vegas import GumbelMaxAdaptiveRejectionSampler
+
+        return GumbelMaxAdaptiveRejectionSampler(
+            llm,
+            bool_cfg.coerce(llm, f=b"".join),
+            **sampler_args,
+            log_stats=time_sampler,
+        )
+    elif sampler_name == "swor":
+        from genlm_control.experimental.vegas import WithoutReplacementSampler
+
+        return WithoutReplacementSampler(
+            llm,
+            bool_cfg.coerce(llm, f=b"".join),
+            **sampler_args,
+            log_stats=time_sampler,
+        )
+    elif sampler_name == "top-k":
+        from genlm_control.sampler import TopKSetSampler
+        from benchmark.util import LoggedSetTokenSampler
+
+        return LoggedSetTokenSampler(
+            TopKSetSampler(llm, bool_cfg, **sampler_args), log_stats=time_sampler
+        )
+    elif sampler_name == "rejection":
+        from genlm_control.experimental.vegas import RejectionSampler
+
+        return RejectionSampler(
+            llm,
+            bool_cfg.coerce(llm, f=b"".join),
+            **sampler_args,
+            log_stats=time_sampler,
+        )
+    elif sampler_name == "lm":
+        from genlm_control.sampler import DirectTokenSampler
+
+        return DirectTokenSampler(llm)
+
+    elif sampler_name == "direct":
+        from genlm_control.sampler import DirectTokenSampler
+
+        return DirectTokenSampler(llm * bool_cfg.coerce(llm, f=b"".join))
+    else:
+        raise ValueError(f"Unknown sampler: {sampler_name}")
+
+
 def normalize_and_sample_token(logws, draw=None):
     logps = logws.normalize()
     if draw is None:

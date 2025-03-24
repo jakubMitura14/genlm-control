@@ -48,7 +48,8 @@ class Sequences:
         max_weight = max(self.log_weights)
         if np.isfinite(max_weight):
             self.log_ml = (
-                np.log(np.mean(np.exp(self.log_weights - max_weight))) + max_weight
+                np.log(np.mean(np.exp(np.array(self.log_weights) - max_weight)))
+                + max_weight
             )
         else:
             self.log_ml = float("-inf")

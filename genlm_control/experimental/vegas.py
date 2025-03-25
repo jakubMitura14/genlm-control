@@ -234,7 +234,15 @@ class AdaptiveRejectionSampler(LasVegasTokenSampler):
 class GumbelMaxAdaptiveRejectionSampler(LasVegasTokenSampler):
     """Sampling with adaptive replacement"""
 
-    def __init__(self, potential, condition, seed=42, proper_weights=True, **kwargs):
+    def __init__(
+        self,
+        potential,
+        condition,
+        seed=42,
+        proper_weights=True,
+        top_logp=None,
+        **kwargs,
+    ):
         super().__init__(potential, condition, **kwargs)
         self.rng = np.random.default_rng(seed=seed)
         self.proper_weights = proper_weights
@@ -280,5 +288,60 @@ class GumbelMaxAdaptiveRejectionSampler(LasVegasTokenSampler):
             logw = logZ - np.log(nrej + 1)
         else:
             logw = logZ + log1mexp(logsumexp(logp0)) - np.log(nrej + 1)
+
+        return tok, logw, np.nan
+
+
+class ClippedAdaptiveRejectionSampler(LasVegasTokenSampler):
+    def __init__(self, potential, condition, top_ps=[0.95, 0.99], seed=42, **kwargs):
+        if len(top_ps) != 2:
+            raise ValueError("`top_ps` must be a list of two values")
+        if not all(0 < top_ps[i] <= 1 for i in range(2)):
+            raise ValueError("`top_ps` must be a list of two values between 0 and 1")
+        super().__init__(potential, condition, **kwargs)
+        self.rng = np.random.default_rng(seed=seed)
+        self.top_logps = np.log(top_ps)
+
+    async def _sample(self, context, verbosity=0, _sample_id=None):
+        logws = await self.get_logws(context, _sample_id)
+        logZ = logsumexp(logws.weights)
+        logps = logws.weights - logZ
+        toks = logws.decode
+
+        tok, nrejs, logp0s = None, [0, 0], [-np.inf, -np.inf]
+        for i in range(2):
+            keys = logps - np.log(-np.log(self.rng.random((self.V,))))
+            order = np.argsort(-keys)
+            for rank in range(logps.size):
+                item = order[rank]
+                if await self.accept(context, toks[item], verbosity, _sample_id):
+                    if tok is None:
+                        assert i == 0
+                        tok = toks[item]
+                    break
+                else:
+                    nrejs[i] += 1
+                    logp0s[i] = logsumexp([logp0s[i], logps[item]])
+                    logps[item] = -np.inf
+                    if logp0s[i] > self.top_logps[i]:
+                        if i == 0:
+                            assert tok is None
+                            if rank + 1 < logps.size:  # no more tokens to sample
+                                tok = toks[order[rank + 1]]
+                                if not await self.accept(
+                                    context, tok, verbosity, _sample_id
+                                ):
+                                    return tok, float("-inf"), np.nan
+                        break
+
+        if tok is None:  # No token was accepted, return EOS and kill the particle.
+            return self.target.eos, float("-inf"), np.nan
+
+        log1mp = log1mexp(logp0s[0]) if logp0s[0] != -np.inf else 0
+
+        if logp0s[0] < self.top_logps[0]:
+            logw = logZ + log1mp - np.log(np.sum(nrejs) + 1)
+        else:
+            logw = logZ + log1mp - np.log(np.sum(nrejs) + 1) + np.log(nrejs[1] + 1)
 
         return tok, logw, np.nan

@@ -9,6 +9,7 @@ from genlm_control.experimental.vegas import (
     GumbelMaxRejectionSampler,
     AdaptiveRejectionSampler,
     GumbelMaxAdaptiveRejectionSampler,
+    ClippedAdaptiveRejectionSampler,
 )
 
 RUN_MC_TESTS = False
@@ -165,6 +166,33 @@ async def test_gumbelmax_adaptive_rejection_sampler(params):
         N1=100,
         N2=1000,
         K=20,
+    )
+
+
+@pytest.mark.asyncio
+@pytest.mark.skipif(not RUN_MC_TESTS, reason="Skipping Monte Carlo tests")
+@settings(deadline=None)
+@given(
+    params(),
+    st.floats(min_value=0.9, max_value=1.0),
+    st.floats(min_value=0.9, max_value=1.0),
+)
+async def test_clipped_adaptive_rejection_sampler(params, top_p1, top_p2):
+    await assert_monte_carlo_close(
+        sampler_cls=ClippedAdaptiveRejectionSampler,
+        params=params,
+        N=10000,
+        equality_opts={"rtol": 2e-2, "atol": 2e-2},
+        sampler_opts={"top_ps": [top_p1, top_p2]},
+    )
+
+    await assert_variance_reduction(
+        sampler_cls=ClippedAdaptiveRejectionSampler,
+        params=params,
+        N1=100,
+        N2=1000,
+        K=20,
+        sampler_opts={"top_ps": [top_p1, top_p2]},
     )
 
 

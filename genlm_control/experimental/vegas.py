@@ -107,6 +107,8 @@ class LasVegasTokenSampler(TokenSampler):
         )
         logws = self.target.alloc_logws()
         for tok, logw, _ in samples:
+            if logw == float("-inf"):
+                continue
             token_id = self.target.lookup[tok]
             logws[token_id] = logsumexp([logws[token_id], logw - np.log(N)])
         return self.target.make_lazy_weights(logws)
@@ -234,15 +236,7 @@ class AdaptiveRejectionSampler(LasVegasTokenSampler):
 class GumbelMaxAdaptiveRejectionSampler(LasVegasTokenSampler):
     """Sampling with adaptive replacement"""
 
-    def __init__(
-        self,
-        potential,
-        condition,
-        seed=42,
-        proper_weights=True,
-        top_logp=None,
-        **kwargs,
-    ):
+    def __init__(self, potential, condition, seed=42, proper_weights=True, **kwargs):
         super().__init__(potential, condition, **kwargs)
         self.rng = np.random.default_rng(seed=seed)
         self.proper_weights = proper_weights
@@ -293,14 +287,14 @@ class GumbelMaxAdaptiveRejectionSampler(LasVegasTokenSampler):
 
 
 class ClippedAdaptiveRejectionSampler(LasVegasTokenSampler):
-    def __init__(self, potential, condition, top_ps=[0.95, 0.99], seed=42, **kwargs):
-        if len(top_ps) != 2:
-            raise ValueError("`top_ps` must be a list of two values")
-        if not all(0 < top_ps[i] <= 1 for i in range(2)):
-            raise ValueError("`top_ps` must be a list of two values between 0 and 1")
+    def __init__(
+        self, potential, condition, top_p1=0.95, top_p2=0.99, seed=42, **kwargs
+    ):
+        if not (0 < top_p1 <= 1 and 0 < top_p2 <= 1):
+            raise ValueError("`top_p1` and `top_p2` must be between 0 and 1")
         super().__init__(potential, condition, **kwargs)
         self.rng = np.random.default_rng(seed=seed)
-        self.top_logps = np.log(top_ps)
+        self.top_logps = [np.log(top_p1), np.log(top_p2)]
 
     async def _sample(self, context, verbosity=0, _sample_id=None):
         logws = await self.get_logws(context, _sample_id)
@@ -326,13 +320,19 @@ class ClippedAdaptiveRejectionSampler(LasVegasTokenSampler):
                     if logp0s[i] > self.top_logps[i]:
                         if i == 0:
                             assert tok is None
-                            if rank + 1 < logps.size:  # no more tokens to sample
+                            if (
+                                rank + 1 < logps.size
+                            ):  # check if there are more tokens to sample
                                 tok = toks[order[rank + 1]]
                                 if not await self.accept(
                                     context, tok, verbosity, _sample_id
                                 ):
                                     return tok, float("-inf"), np.nan
                         break
+
+            # Initialize second round with first round's accumulated mass
+            if i == 0:
+                logp0s[1] = logp0s[0]
 
         if tok is None:  # No token was accepted, return EOS and kill the particle.
             return self.target.eos, float("-inf"), np.nan

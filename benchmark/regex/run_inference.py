@@ -15,9 +15,6 @@ from pathlib import Path
 from genlm_control import InferenceEngine, PromptedLLM, Potential
 from genlm_control.constant import EndOfSequence
 
-# import multiprocessing # For vllm tensor parallelism.
-# multiprocessing.set_start_method('spawn', force=True)
-
 project_root = Path(__file__).resolve().parent.parent.parent
 if str(project_root) not in sys.path:
     sys.path.insert(0, str(project_root))
@@ -120,21 +117,27 @@ def parse_args():
     return parser.parse_args()
 
 
-prompt_template = """
-Generate a simple string that matches the specified pattern.
+EXAMPLES = [
+    ("(ab)+", "ab"),
+    ("(ab|cd)+", "cd"),
+    ("[a-z]+", "hello"),
+]
 
-Here are some examples:
 
-Regex: (ab)+
-String: ab
+def few_shots_messages_formatter(pattern):
+    messages = [
+        {
+            "role": "system",
+            "content": "You are a helpful assistant that generates strings matching regular expressions. Only output the exact string that matches the regex pattern, nothing more.",
+        }
+    ]
 
-Regex: (ab|cd)+
-String: cd
+    for input, output in EXAMPLES:
+        messages.append({"role": "user", "content": input})
+        messages.append({"role": "assistant", "content": output})
 
-It is important that you only output the string matching the regex and nothing else.
-
-Regex: {}
-String:"""
+    messages.append({"role": "user", "content": pattern})
+    return messages
 
 
 async def main():
@@ -148,10 +151,10 @@ async def main():
         json.dump(vars(args), f, indent=4)
 
     llm = PromptedLLM.from_name(args.model_name, **json.loads(args.lm_args))
-    eos = [t for t in llm.vocab if b"\n" in t]
+    eos = [t for t in llm.vocab if b"\n" in t] + [
+        llm.model.tokenizer.eos_token.encode("utf-8")
+    ]
     llm = llm.spawn_new_eos(eos)
-
-    print("\n------ Loaded LM ------\n")
 
     data = pd.read_csv(
         "/home/mila/b/benjamin.lebrun/genlm/genlm-control/benchmark/regex/benchmark.csv"
@@ -170,7 +173,11 @@ async def main():
 
         potential = PatternPotential(pattern)
 
-        llm.set_prompt_from_str(prompt_template.format(pattern))
+        llm.prompt_ids = llm.model.tokenizer.apply_chat_template(
+            few_shots_messages_formatter(pattern),
+            tokenize=True,
+            add_generation_prompt=True,
+        )
 
         sampler = make_sampler(
             args.sampler_name,
@@ -251,9 +258,6 @@ async def main():
                 sampler._reset_stats()
             else:
                 warnings.warn("Sampler does not support timing stats", RuntimeWarning)
-
-        if hasattr(sampler, "_save_cache"):
-            sampler._save_cache()
 
 
 if __name__ == "__main__":

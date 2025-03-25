@@ -1,6 +1,5 @@
 import time
-import os
-import pickle
+import asyncio
 from genlm_control.util import fast_sample_lazyweights
 from genlm_control.sampler.set import SetSampler
 from genlm_control.sampler.token import TokenSampler
@@ -23,6 +22,17 @@ def make_sampler(sampler_name, llm, bool_cfg, sampler_args, time_sampler=False):
             **sampler_args,
             log_stats=time_sampler,
         )
+
+    elif sampler_name == "clipped-swar":
+        from genlm_control.experimental.vegas import ClippedAdaptiveRejectionSampler
+
+        return ClippedAdaptiveRejectionSampler(
+            llm,
+            bool_cfg.coerce(llm, f=b"".join),
+            **sampler_args,
+            log_stats=time_sampler,
+        )
+
     elif sampler_name == "swor":
         from genlm_control.experimental.vegas import WithoutReplacementSampler
 
@@ -57,6 +67,9 @@ def make_sampler(sampler_name, llm, bool_cfg, sampler_args, time_sampler=False):
         from genlm_control.sampler import DirectTokenSampler
 
         return DirectTokenSampler(llm * bool_cfg.coerce(llm, f=b"".join))
+
+    elif sampler_name == "saved-direct":
+        return SavedDirectTokenSampler(llm, bool_cfg.coerce(llm, f=b"".join))
     else:
         raise ValueError(f"Unknown sampler: {sampler_name}")
 
@@ -71,45 +84,42 @@ def normalize_and_sample_token(logws, draw=None):
     return token, logps[token]
 
 
-class CachedDirectTokenSampler(TokenSampler):
-    def __init__(self, potential, cache_file=None, save_every=100):
-        super().__init__(target=potential)
+class SavedDirectTokenSampler(TokenSampler):
+    def __init__(self, potential, condition):
         self.potential = potential
-        self.cache = {}
-        self.cache_file = cache_file
-        self.save_every = save_every
-
-        # Load cache from file if it exists
-        if cache_file and os.path.exists(cache_file):
-            try:
-                with open(cache_file, "rb") as f:
-                    self.cache = pickle.load(f)
-                print(f"Loaded cache with {len(self.cache)} entries from {cache_file}")
-            except Exception as e:
-                print(f"Error loading cache from {cache_file}: {e}")
-
-    def _save_cache(self):
-        if self.cache_file:
-            with open(self.cache_file, "wb") as f:
-                pickle.dump(self.cache, f)
+        self.condition = condition
+        self._reset_stats()
+        super().__init__(target=potential * condition)
 
     async def sample(self, context, draw=None):
-        cache_key = tuple(context)
-        if cache_key in self.cache:
-            logws = self.cache[cache_key]
-        else:
-            logws = await self.potential.logw_next(context)
-            self.cache[cache_key] = logws
-            if len(self.cache) % self.save_every == 0:
-                self._save_cache()
+        W1, W2 = await asyncio.gather(
+            self.potential.logw_next(context), self.condition.logw_next(context)
+        )
+
+        potential_ws = W1.weights[self.target.v1_idxs]
+        condition_ws = W2.weights[self.target.v2_idxs]
+        logws = self.target.make_lazy_weights(potential_ws + condition_ws)
+
         token, logp = normalize_and_sample_token(logws, draw)
-        return token, logws.sum(), logp
+
+        logZ = logws.sum()
+
+        self.stats["results"].append((token, logZ))
+        self.stats["weights"].append(
+            (potential_ws, condition_ws, self.target.vocab_eos)
+        )
+        self.stats["contexts"].append(context)
+
+        return token, logZ, logp
+
+    def get_stats(self):
+        return self.stats
+
+    def _reset_stats(self):
+        self.stats = {"results": [], "weights": [], "contexts": []}
 
     async def cleanup(self):
-        self._save_cache()
-
-    def __del__(self):
-        self._save_cache()
+        pass
 
 
 class LoggedSetTokenSampler(TokenSampler):

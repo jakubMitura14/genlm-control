@@ -36,7 +36,7 @@ def parse_args():
     parser.add_argument(
         "--n_bootstrap",
         type=int,
-        default=1000,
+        default=10000,
         help="Number of bootstrap samples for confidence intervals.",
     )
     parser.add_argument(
@@ -111,17 +111,16 @@ def analyze_directory(directory, n_bootstrap=1000, confidence=0.95):
 
     # Calculate statistics
     mean_accuracy = np.mean(accuracies)
-    total_inference_time = np.sum(inference_times)
+    mean_inference_time = np.mean(inference_times)
 
     # Bootstrap confidence intervals
     acc_ci = bootstrap_ci(
         accuracies, statistic=np.mean, n_bootstrap=n_bootstrap, confidence=confidence
     )
 
-    # For total inference time, we need to bootstrap the sum
     time_ci = bootstrap_ci(
         inference_times,
-        statistic=np.sum,
+        statistic=np.mean,
         n_bootstrap=n_bootstrap,
         confidence=confidence,
     )
@@ -150,10 +149,10 @@ def analyze_directory(directory, n_bootstrap=1000, confidence=0.95):
         "accuracy_ci": acc_ci,
         "mean_accuracy_low": acc_ci[0],
         "mean_accuracy_high": acc_ci[1],
-        "total_inference_time": total_inference_time,
+        "mean_inference_time": mean_inference_time,
         "time_ci": time_ci,
-        "total_inference_time_low": time_ci[0],
-        "total_inference_time_high": time_ci[1],
+        "mean_inference_time_low": time_ci[0],
+        "mean_inference_time_high": time_ci[1],
         **args_info,
     }
 
@@ -177,10 +176,10 @@ def main():
         "accuracy_ci",
         "mean_accuracy_low",
         "mean_accuracy_high",
-        "total_inference_time",
+        "mean_inference_time",
         "time_ci",
-        "total_inference_time_low",
-        "total_inference_time_high",
+        "mean_inference_time_low",
+        "mean_inference_time_high",
         "lm",
         "n_particles",
         "sampler_name",
@@ -199,13 +198,11 @@ def main():
     for dir_name, result in results.items():
         print(f"Directory: {dir_name}\n")
         print(f"Number of samples: {result['n_samples']}\n")
-        print(f"Mean accuracy: {result['mean_accuracy']:.4f}\n")
         print(
-            f"Accuracy CI: [{result['accuracy_ci'][0]:.4f}, {result['accuracy_ci'][1]:.4f}]\n"
+            f"Accuracy: {result['mean_accuracy']:.3f} ({result['accuracy_ci'][0]:.2f}, {result['accuracy_ci'][1]:.2f})\n"
         )
-        print(f"Total inference time: {result['total_inference_time']:.2f} seconds\n")
         print(
-            f"Total time CI: [{result['time_ci'][0]:.2f}, {result['time_ci'][1]:.2f}] seconds\n"
+            f"Inference time: {result['mean_inference_time']:.2f} ({result['mean_inference_time_low']:.2f}, {result['mean_inference_time_high']:.2f})\n"
         )
         print("\n" + "-" * 80 + "\n\n")
 
@@ -243,12 +240,11 @@ def main():
                 "accuracy": result["mean_accuracy"],
                 "accuracy_low": result["accuracy_ci"][0],
                 "accuracy_high": result["accuracy_ci"][1],
-                "inference_time": result["total_inference_time"]
-                / 60,  # / 60 to get minutes
-                "inference_time_low": result["time_ci"][0] / 60,
-                "inference_time_high": result["time_ci"][1] / 60,
+                "inference_time": result["mean_inference_time"],
+                "inference_time_low": result["mean_inference_time_low"],
+                "inference_time_high": result["mean_inference_time_high"],
                 "samples": result["n_samples"],
-                "time_per_sample": result["total_inference_time"] / result["n_samples"],
+                "time_per_sample": result["mean_inference_time"] / result["n_samples"],
             }
         )
 
@@ -281,7 +277,7 @@ def main():
         + labs(
             title="",
             x="Accuracy (95% CI)",
-            y="Total runtime (log mins, 95% CI)",
+            y="Mean runtime (mins, log scale)",
             color="Method",
         )
         + scale_y_log10()

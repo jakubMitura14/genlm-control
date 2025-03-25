@@ -83,6 +83,9 @@ class JsonSchema(Potential):
     def __check_context(self, context):
         context = bytes(context)
 
+        if b"\n" in context:
+            raise ValueError("Newline in context")
+
         # JSON documents have to be valid UTF-8, but we might be
         # in the middle of generating a UTF-8 character. If so, we
         # only consider the prefix that is valid UTF-8, but need

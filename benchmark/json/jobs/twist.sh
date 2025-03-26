@@ -8,6 +8,7 @@
 
 N_PARTICLES=${1:-50}
 OUTPUT_PARENT_DIR=${2:-"results"}
+TASKS=${3:-"Github_trivial Github_easy Github_medium Github_hard"}
 
 GENLM_ENV="/home/mila/b/benjamin.lebrun/miniconda3/envs/genlm"
 PROJECT_ROOT="/home/mila/b/benjamin.lebrun/genlm/genlm-control/benchmark/json"
@@ -26,4 +27,5 @@ python $PROJECT_ROOT/run_inference.py \
 --use_critic \
 --time_sampler \
 --verbosity 0 \
---ess_threshold $ESS_THRESHOLD
+--ess_threshold $ESS_THRESHOLD \
+--tasks $TASKS

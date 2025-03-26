@@ -254,10 +254,9 @@ class GumbelMaxAdaptiveRejectionSampler(LasVegasTokenSampler):
             )  # throw this into init
             order = np.argsort(-keys)
             for rank in range(logps.size):
-                if keys[rank] == -np.inf:
-                    break
                 item = order[rank]
-                print(toks[item])
+                if keys[item] == -np.inf:
+                    break
                 if await self.accept(context, toks[item], verbosity, _sample_id):
                     if tok is None:
                         tok = toks[item]

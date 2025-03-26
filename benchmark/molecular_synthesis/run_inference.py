@@ -90,6 +90,16 @@ def make_sampler(sampler_name, llm, bool_cfg, sampler_args, time_sampler=False):
         return LoggedSetTokenSampler(
             TopKSetSampler(llm, bool_cfg, **sampler_args), log_stats=time_sampler
         )
+    elif sampler_name == "clip":
+        from genlm_control.experimental.vegas import ClippedAdaptiveRejectionSampler
+
+        return ClippedAdaptiveRejectionSampler(
+            llm,
+            PartialSMILES().coerce(llm, f=b"".join),
+            **sampler_args,
+            log_stats=time_sampler,
+        )
+
     elif sampler_name == "rejection":
         from genlm_control.experimental.vegas import RejectionSampler
 

@@ -1,0 +1,7 @@
+(define (problem tower_to_equal_towers_2)
+    (:domain blocksworld)
+    (:requirements :strips)
+    (:objects b1 b2)
+    (:init (arm-empty) (clear b1) (on b1 b2) (on-table b2))
+    (:goal (and (holding b1)))
+)

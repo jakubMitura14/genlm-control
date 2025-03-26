@@ -1,0 +1,5 @@
+requirements:
+- polars
+- planetarium (https://github.com/BatsResearch/planetarium/tree/main)
+
+follow the instructions in the planetarium README to install Fast-Downward and VAL.

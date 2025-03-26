@@ -37,12 +37,12 @@ def parse_args():
         default="meta-llama/Meta-Llama-3.1-8B-Instruct",
         help="Name of the model to use.",
     )
-    parser.add_argument(
-        "--min_max_tokens",
-        type=int,
-        default=150,
-        help="Minimum max tokens.",
-    )
+    # parser.add_argument(
+    #     "--min_max_tokens",
+    #     type=int,
+    #     default=150,
+    #     help="Minimum max tokens.",
+    # )
     parser.add_argument(
         "--n_particles",
         type=int,
@@ -113,6 +113,12 @@ def parse_args():
         default="val",
         help="Split to use.",
     )
+    parser.add_argument(
+        "--max_tokens",
+        type=int,
+        default=350,
+        help="Maximum number of tokens to generate.",
+    )
     return parser.parse_args()
 
 
@@ -122,7 +128,6 @@ TASKS = [
     "Github_medium",
     "Github_trivial",
     "Github_ultra",
-    "Github_very_hard",
     "Glaiveai2K",
     "JsonSchemaStore",
     "Kubernetes",
@@ -137,22 +142,27 @@ async def main():
     if not os.path.exists(args.output_dir):
         os.makedirs(args.output_dir)
 
-    arg_path = os.path.join(args.output_dir, "args.json")
-    with open(arg_path, "w") as f:
-        json.dump(vars(args), f, indent=4)
+    if args.tasks:
+        if set(args.tasks) <= set(TASKS):
+            tasks = args.tasks
+        else:
+            raise ValueError(f"Invalid tasks: {set(args.tasks) - set(TASKS)}")
+    else:
+        tasks = TASKS
 
     llm = PromptedLLM.from_name(args.model_name, **json.loads(args.lm_args))
 
-    tasks = args.tasks if args.tasks else TASKS
-
     for task in tasks:
-        print(f"Running inference for task: {task}")
+        print(f"\n\n ------- Running inference for task: {task} -------\n\n")
 
         data = load_dataset("epfl-dlab/JSONSchemaBench", task)
 
         results_dir = os.path.join(args.output_dir, task)
         if not os.path.exists(results_dir):
             os.makedirs(results_dir)
+
+        with open(os.path.join(results_dir, "args.json"), "w") as f:
+            json.dump(vars(args), f, indent=4)
 
         accs = []
         inference_times = []
@@ -186,10 +196,11 @@ async def main():
             if args.use_critic:
                 critic = potential.coerce(llm, f=b"".join)
 
-            max_tokens = max(
-                int(len(llm.model.tokenizer.encode(schema_str)) * 1.5),
-                args.min_max_tokens,
-            )
+            max_tokens = args.max_tokens
+            # max(
+            #     int(len(llm.model.tokenizer.encode(schema_str)) * 1.5),
+            #     args.min_max_tokens,
+            # )
 
             start_time = time.time()
 
@@ -246,9 +257,6 @@ async def main():
                     warnings.warn(
                         "Sampler does not support timing stats", RuntimeWarning
                     )
-
-            if hasattr(sampler, "_save_cache"):
-                sampler._save_cache()
 
 
 if __name__ == "__main__":

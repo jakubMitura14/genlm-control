@@ -1,3 +1,4 @@
+import numpy as np
 from json import dumps, loads, JSONDecodeError
 from typing import Callable, Dict, Any, List, Tuple
 from genlm_control.constant import EndOfSequence
@@ -24,6 +25,9 @@ def sequence_to_str(sequence):
 def evaluate_output(sequences, schema):
     acc = 0
     for sequence, p in sequences.posterior.items():
+        if np.isnan(p):
+            continue
+
         if sequence and not isinstance(sequence[-1], EndOfSequence):
             continue
         else:

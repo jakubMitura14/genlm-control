@@ -128,6 +128,10 @@ class SequenceModel(Model):
             twist_amt = await self.critic.score(self.token_ctx)
             self.twist(twist_amt)
 
+        if self.weight == float("-inf"):
+            self.finish()
+            return
+
         if self.verbosity > 0:
             print(self.__repr__())
 

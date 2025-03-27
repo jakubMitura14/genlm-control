@@ -1,5 +1,6 @@
 import os
 import sys
+import json
 import pickle
 import argparse
 import numpy as np
@@ -105,6 +106,11 @@ def main():
     parser.add_argument(
         "--timeout", type=int, default=None, help="Timeout for evaluation"
     )
+    parser.add_argument(
+        "--just_inference_time",
+        action="store_true",
+        help="Only compute the inference time and print it",
+    )
     args = parser.parse_args()
 
     data = []
@@ -119,10 +125,24 @@ def main():
             f"Raw Spider dataset directory not found: {raw_spider_dir}"
         )
 
+    if os.path.exists(os.path.join(args.results_dir, "args.json")):
+        with open(os.path.join(args.results_dir, "args.json"), "r") as f:
+            args_dict = json.load(f)
+            print(f"\tLM: {args_dict['model_name']}")
+            print(f"\tn_particles: {args_dict['n_particles']}")
+            print(f"\tess_threshold: {args_dict['ess_threshold']}")
+            print(f"\tsampler_name: {args_dict['sampler_name']}")
+            print(f"\tsampler_args: {args_dict['sampler_args']}")
+
+    print(f"Number of instances: {len(data)}")
+
+    mean, lower, upper = mean_ci([r["metadata"]["inference_time"] for r in data])
     print(
-        "Total inference time (min): ",
-        sum([datum["metadata"]["inference_time"] for datum in data]) / 60,
+        f"Mean inference time: {round(mean, 2)} ({round(lower, 2)}, {round(upper, 2)})"
     )
+
+    if args.just_inference_time:
+        return
 
     if args.n_workers > 1:
         with ProcessPoolExecutor(

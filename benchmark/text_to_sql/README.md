@@ -51,3 +51,9 @@ python run_evaluation.py \
     --raw_spider_dir data/spider_data \
     --output_pkl results/test/evaluation_results.pkl
 ```
+
+Or run the evaluation for all the results in the `results` directory with the following command:
+
+```bash
+./eval_all.sh results/*
+```

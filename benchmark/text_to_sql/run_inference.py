@@ -17,6 +17,7 @@ if str(project_root) not in sys.path:
 
 # from benchmark.text_to_sql.potential import SpiderTableColumnVerifier  # noqa: E402
 
+from benchmark.util import make_sampler  # noqa: E402
 from benchmark.text_to_sql.spider.schema import load_schemas  # noqa: E402
 from benchmark.text_to_sql.spider.dialogue import load_spider_data  # noqa: E402
 from benchmark.text_to_sql.spider.prompt_formatter import SpiderPromptFormatter  # noqa: E402
@@ -24,58 +25,6 @@ from benchmark.text_to_sql.spider.prompt_formatter import SpiderPromptFormatter 
 warnings.filterwarnings("once", category=RuntimeWarning)
 
 os.environ["VLLM_ENGINE_ITERATION_TIMEOUT_S"] = "360"
-
-
-def make_sampler(sampler_name, llm, bool_cfg, sampler_args, time_sampler=False):
-    if sampler_name == "eager":
-        from genlm_control.sampler import EagerSetSampler
-        from benchmark.util import LoggedSetTokenSampler
-
-        print("Loading EagerSetSampler")
-
-        return LoggedSetTokenSampler(
-            EagerSetSampler(llm, bool_cfg, **sampler_args), log_stats=time_sampler
-        )
-    elif sampler_name == "swar":
-        from genlm_control.experimental.vegas import GumbelMaxAdaptiveRejectionSampler
-
-        return GumbelMaxAdaptiveRejectionSampler(
-            llm,
-            bool_cfg.coerce(llm, f=b"".join),
-            **sampler_args,
-            log_stats=time_sampler,
-        )
-    elif sampler_name == "swor":
-        from genlm_control.experimental.vegas import WithoutReplacementSampler
-
-        return WithoutReplacementSampler(
-            llm,
-            bool_cfg.coerce(llm, f=b"".join),
-            **sampler_args,
-            log_stats=time_sampler,
-        )
-    elif sampler_name == "top-k":
-        from genlm_control.sampler import TopKSetSampler
-        from benchmark.util import LoggedSetTokenSampler
-
-        return LoggedSetTokenSampler(
-            TopKSetSampler(llm, bool_cfg, **sampler_args), log_stats=time_sampler
-        )
-    elif sampler_name == "rejection":
-        from genlm_control.experimental.vegas import RejectionSampler
-
-        return RejectionSampler(
-            llm,
-            bool_cfg.coerce(llm, f=b"".join),
-            **sampler_args,
-            log_stats=time_sampler,
-        )
-    elif sampler_name == "lm":
-        from genlm_control.sampler import DirectTokenSampler
-
-        return DirectTokenSampler(llm)
-    else:
-        raise ValueError(f"Unknown sampler: {sampler_name}")
 
 
 def parse_args():

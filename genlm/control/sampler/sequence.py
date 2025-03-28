@@ -125,7 +125,10 @@ class SequenceModel(Model):
 
         inf_weight = self.weight == float("-inf")
         if inf_weight:
-            assert self.twist_amt != float("-inf")
+            if self.critic:
+                # we expect this line to never be reached
+                # infinite twists are finished on the condition below 
+                assert self.twist_amount != float("-inf")
             self.finish()
             return
 

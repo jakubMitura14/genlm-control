@@ -1,13 +1,24 @@
 import pytest
+<<<<<<< HEAD
 from genlm.control import InferenceEngine
 from genlm.control.potential import Potential, PromptedLLM, BoolFSA
 from genlm.control.sampler import (
+=======
+import numpy as np
+from genlm_control import InferenceEngine
+from genlm_control.potential import Potential, PromptedLLM, BoolFSA
+from genlm_control.sampler import (
+>>>>>>> eac48f4 (feat: testing for -inf weight early stopping in both critic and non-critic models)
     direct_token_sampler,
     eager_token_sampler,
     topk_token_sampler,
 )
+<<<<<<< HEAD
 from genlm.control.sampler.token import TokenSampler
 from unittest.mock import Mock
+=======
+from genlm_control.sampler.token import TokenSampler
+>>>>>>> eac48f4 (feat: testing for -inf weight early stopping in both critic and non-critic models)
 
 
 @pytest.fixture(scope="module")
@@ -114,6 +125,56 @@ async def test_with_llm_and_critic_no_twist(llm):
     engine = InferenceEngine(sampler, critic=MockCritic(mtl_llm.vocab))
 
     n_particles = 10
+
+    await assert_engine_run(engine, n_particles, max_tokens=5, ess_threshold=0)
+
+    assert n_calls == n_particles
+
+    await engine.cleanup()
+
+@pytest.mark.asyncio
+async def test_with_llm_critic_early_stop(llm):
+    mtl_llm = llm.spawn_new_eos([b"."])
+    n_calls = 0
+    n_particles = 10
+
+    class MockSampler(TokenSampler):
+        async def sample(self, context):
+            nonlocal n_calls
+            n_calls += 1
+            return b"a", float('-inf'), np.nan
+
+    class MockPotential(Potential):
+        async def prefix(self, context):
+            return 0
+
+        async def complete(self, context):
+            return 0
+        
+    sampler = MockSampler(mtl_llm)
+    engine = InferenceEngine(sampler, critic=MockPotential(mtl_llm.vocab))
+
+    await assert_engine_run(engine, n_particles, max_tokens=5, ess_threshold=0)
+
+    assert n_calls == n_particles
+
+    await engine.cleanup()
+
+
+@pytest.mark.asyncio
+async def test_with_llm_no_critic_early_stop(llm):
+    mtl_llm = llm.spawn_new_eos([b"."])
+    n_calls = 0
+    n_particles = 10
+
+    class MockSampler(TokenSampler):
+        async def sample(self, context):
+            nonlocal n_calls
+            n_calls += 1
+            return b"a", float('-inf'), np.nan
+
+    sampler = MockSampler(mtl_llm)
+    engine = InferenceEngine(sampler)
 
     await assert_engine_run(engine, n_particles, max_tokens=5, ess_threshold=0)
 

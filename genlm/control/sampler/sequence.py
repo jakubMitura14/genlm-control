@@ -123,6 +123,12 @@ class SequenceModel(Model):
         unit = await self.call(self.unit_sampler)
         self.token_ctx.append(unit)
 
+        inf_weight = self.weight == float("-inf")
+        if inf_weight:
+            assert self.twist_amt != float("-inf")
+            self.finish()
+            return
+
         if self.critic and self.twist_with_critic:
             twist_amt = await self.critic.score(self.token_ctx)
             self.twist(twist_amt)

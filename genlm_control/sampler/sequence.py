@@ -126,11 +126,15 @@ class SequenceModel(Model):
 
         if self.critic and self.twist_with_critic:
             twist_amt = await self.critic.score(self.token_ctx)
+            if twist_amt == float("-inf"):
+                self.score(twist_amt)
+                self.finish()
+                return
             self.twist(twist_amt)
 
-        if self.weight == float("-inf"):
-            self.finish()
-            return
+        # if self.weight == float("-inf"):
+        #    self.finish()
+        #    return
 
         if self.verbosity > 0:
             print(self.__repr__())

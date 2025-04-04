@@ -110,7 +110,7 @@ class InferenceVisualizer:
             self._server.server_bind()
             self._server.server_activate()
         except OSError as e:
-            if e.errno == 48:  # Address already in use
+            if e.errno == 48 or e.errno == 98:  # Address already in use
                 raise OSError(f"Port {self._port} is already in use") from None
             raise
 

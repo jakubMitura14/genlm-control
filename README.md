@@ -11,50 +11,12 @@ GenLM Control is a library for controlled generation with programmable constrain
 
 ## Quick Start
 
-### Installation
-
-Clone the repository:
-```bash
-git clone git@github.com:ChiSym/genlm-control.git
-cd genlm-control
-```
-and install with pip:
+This library supports installation via pip:
 
 ```bash
-pip install .
+pip install genlm-control
 ```
 
-This installs the package without development dependencies. For development, install in editable mode with:
+## Development
 
-```bash
-pip install -e ".[test,docs]"
-```
-
-which also installs the dependencies needed for testing (test) and documentation (docs).
-
-## Requirements
-
-- Python >= 3.11
-- The core dependencies listed in the `pyproject.toml` file of the repository.
-
-## Testing
-
-When test dependencies are installed, the test suite can be run via:
-
-```bash
-pytest tests
-```
-
-## Documentation
-
-Documentation is generated using [mkdocs](https://www.mkdocs.org/) and hosted on GitHub Pages. To build the documentation, run:
-
-```bash
-mkdocs build
-```
-
-To serve the documentation locally, run:
-
-```bash
-mkdocs serve
-```
+See [DEVELOPING.md](DEVELOPING.md) for details on how to install the project locally.

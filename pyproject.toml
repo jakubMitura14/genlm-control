@@ -16,7 +16,7 @@ authors = [
 ]
 dependencies = [
     "genlm-grammar @ git+https://github.com/genlm/genlm-grammar.git@main",
-    "genlm-backend @ git+https://github.com/genlm/genlm-backend.git@main",
+    "genlm-backend @ git+https://github.com/genlm/backend.git@main",
     "genlm-llamppl @ git+https://github.com/probcomp/hfppl.git@rename",
     "arsenal>=3.1.2",
     "IPython",

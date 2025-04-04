@@ -1,6 +1,6 @@
 import numpy as np
 from genlm.grammar import Float
-from arsenal.maths import sample_dict, logsumexp
+from arsenal.maths import sample_dict
 from arsenal.datastructures import LocatorMaxHeap
 from abc import ABC, abstractmethod
 
@@ -31,10 +31,10 @@ class SetSampler(ABC):
     @abstractmethod
     async def sample_set(self, context):
         """Sample a weighted set of tokens from the target potential's vocabulary."""
-        pass # pragma: no cover
+        pass  # pragma: no cover
 
     async def cleanup(self):
-        pass # pragma: no cover
+        pass  # pragma: no cover
 
 
 class TrieSetSampler(SetSampler):
@@ -103,7 +103,9 @@ class TrieSetSampler(SetSampler):
         Raises:
             NotImplementedError: If the method is not implemented in subclasses.
         """
-        raise NotImplementedError("Subclasses must implement sample_set") # pragma: no cover
+        raise NotImplementedError(
+            "Subclasses must implement sample_set"
+        )  # pragma: no cover
 
     async def cleanup(self):
         """

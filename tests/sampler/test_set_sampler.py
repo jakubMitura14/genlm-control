@@ -52,15 +52,17 @@ async def test_topk_set_sampler(params, K):
 
 
 def test_topk_set_sampler_K_zero():
-    p1 = MockPotential(['ab'], [0, 0])   
-    p2 = MockPotential(['a', 'b'], [0, 0, 0])
+    p1 = MockPotential(["ab"], [0, 0])
+    p2 = MockPotential(["a", "b"], [0, 0, 0])
     with pytest.raises(ValueError):
         TopKSetSampler(iter_potential=p1, item_potential=p2, K=0)
 
 
 def test_iter_item_error():
-    p1 = MockPotential([0], [0, 0])   
-    p2 = MockPotential(['a', 'b'], [0, 0, 0])
-    with pytest.raises(ValueError, match="Token type of `iter_potential` must be an iterable of token type of `item_potential`.*"):
+    p1 = MockPotential([0], [0, 0])
+    p2 = MockPotential(["a", "b"], [0, 0, 0])
+    with pytest.raises(
+        ValueError,
+        match="Token type of `iter_potential` must be an iterable of token type of `item_potential`.*",
+    ):
         TrieSetSampler(iter_potential=p1, item_potential=p2)
-

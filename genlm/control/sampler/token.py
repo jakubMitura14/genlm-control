@@ -1,4 +1,3 @@
-from arsenal.maths import logsumexp
 from genlm.control.util import fast_sample_lazyweights
 from genlm.llamppl import SubModel
 from genlm.control.sampler.set import SetSampler
@@ -47,10 +46,12 @@ class TokenSampler(SubModel):
         Returns:
             (token, weight, logp): A tuple containing the sampled token, weight, and log-probability of the sampled token.
         """
-        raise NotImplementedError("Subclasses must implement sample method") # pragma: no cover
+        raise NotImplementedError(
+            "Subclasses must implement sample method"
+        )  # pragma: no cover
 
     async def cleanup(self):
-        pass # pragma: no cover
+        pass  # pragma: no cover
 
 
 class DirectTokenSampler(TokenSampler):
@@ -97,7 +98,7 @@ class DirectTokenSampler(TokenSampler):
         return token, logws.sum(), logps[token]
 
     async def cleanup(self):
-        pass # pragma: no cover
+        pass  # pragma: no cover
 
 
 class SetTokenSampler(TokenSampler):

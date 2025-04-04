@@ -91,7 +91,7 @@ class Potential(ABC, PotentialOps, PotentialTests):
         Returns:
             (float): Log weight of the context under the language.
         """
-        pass # pragma: no cover
+        pass  # pragma: no cover
 
     @abstractmethod
     async def prefix(self, context):
@@ -103,7 +103,7 @@ class Potential(ABC, PotentialOps, PotentialTests):
         Returns:
             (float): Log weight of the context as a prefix.
         """
-        pass # pragma: no cover
+        pass  # pragma: no cover
 
     async def score(self, context):
         """Assess the weight of `context` based on EOS-termination.

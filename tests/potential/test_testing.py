@@ -10,7 +10,7 @@ class MockPotential(Potential):
 
     async def complete(self, context):
         return 1.0
-    
+
     async def prefix(self, context):
         if self.has_errors:
             return float("-inf")
@@ -20,8 +20,7 @@ class MockPotential(Potential):
         weights = np.array([0] * (len(self.vocab_eos)))
         if self.has_errors:
             weights[0] = 100.0  # Create inconsistency
-        return self.make_lazy_weights(weights)    
-    
+        return self.make_lazy_weights(weights)
 
 
 @pytest.mark.asyncio

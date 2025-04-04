@@ -2,7 +2,6 @@ import pytest
 import numpy as np
 
 
-from genlm.grammar import Float
 from genlm.control.potential import Potential
 from genlm.control.sampler.sequence import Importance, SMC, Sequences, SequenceModel
 from genlm.control.sampler.token import DirectTokenSampler

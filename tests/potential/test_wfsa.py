@@ -212,7 +212,7 @@ async def test_bool_fsa_with_generated_regex(pattern, data):
 
 def test_wfsa_init_wrong_semiring():
     # Test initialization with unsupported semiring
-    wfsa = BaseWFSA(Boolean) # TODO: support this semiring
+    wfsa = BaseWFSA(Boolean)  # TODO: support this semiring
     with pytest.raises(ValueError, match="Unsupported semiring"):
         WFSA(wfsa=wfsa)
 

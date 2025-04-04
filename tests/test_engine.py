@@ -200,7 +200,7 @@ def test_invalids(llm, best_fsa):
 def test_invalid_critic():
     # Create a mock TokenSampler
     mock_sampler = Mock(spec=TokenSampler)
-    
+
     # Try to create InferenceEngine with an invalid critic (just a string)
     with pytest.raises(ValueError, match="`critic` must be a Potential"):
         InferenceEngine(unit_sampler=mock_sampler, critic="not a potential")

@@ -173,6 +173,9 @@ def test_auto_open_browser(mocker):
 
 def test_other_oserror(mocker):
     """Test handling of OSError other than port in use."""
-    with mocker.patch("socketserver.TCPServer.server_bind", side_effect=OSError(99, "Some other error")):
+    with mocker.patch(
+        "socketserver.TCPServer.server_bind",
+        side_effect=OSError(99, "Some other error"),
+    ):
         with pytest.raises(OSError, match="Some other error"):
             InferenceVisualizer()

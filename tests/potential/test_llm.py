@@ -141,7 +141,9 @@ def eos_test_params(draw):
 @settings(deadline=None)
 @given(eos_test_params())
 async def test_new_eos_tokens(llm, params):
-    with pytest.raises(ValueError, match="Cannot reset eos_tokens after initialization"):
+    with pytest.raises(
+        ValueError, match="Cannot reset eos_tokens after initialization"
+    ):
         llm.eos_tokens = []
 
     eos_token_ids, context_ids, prompt_ids = params

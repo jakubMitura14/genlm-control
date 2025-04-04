@@ -27,7 +27,7 @@ class MockPotential(Potential):
     async def batch_prefix(self, contexts):
         time.sleep(self.delay)  # Single delay for batch
         return np.array([np.log(len(context) / 2) for context in contexts])
-    
+
     def spawn(self):
         return MockPotential()
 
@@ -133,17 +133,17 @@ async def test_spawn_and_repr():
     """Test spawn method creates new instance and repr works correctly"""
     potential = MockPotential()
     autobatched = potential.to_autobatched()
-    
+
     # Test spawn
     spawned = autobatched.spawn()
     assert isinstance(spawned, type(autobatched))
     assert spawned is not autobatched
     assert spawned.potential is not autobatched.potential
-    
+
     # Test repr
     expected_repr = f"AutoBatchedPotential({potential!r})"
     assert repr(autobatched) == expected_repr
-    
+
     await autobatched.cleanup()
     await spawned.cleanup()
 
@@ -153,15 +153,15 @@ async def test_close_and_cleanup():
     """Test close() and cleanup() methods"""
     potential = MockPotential()
     autobatched = potential.to_autobatched()
-    
+
     # Test that the background loop is running
     assert autobatched.background_loop.task is not None
     assert not autobatched.background_loop.task.done()
-    
+
     # Test close()
     autobatched.background_loop.close()
     assert autobatched.background_loop.task is None
-    
+
     # Test cleanup()
     autobatched = potential.to_autobatched()  # Create new instance
     await autobatched.cleanup()
@@ -173,13 +173,13 @@ async def test_del_cleanup():
     """Test __del__ cleanup"""
     potential = MockPotential()
     autobatched = potential.to_autobatched()
-    
+
     # Get reference to background loop
     loop = autobatched.background_loop
     assert loop.task is not None
-    
+
     # Delete the autobatched instance
     del autobatched
-    
+
     # Verify the background loop was cleaned up
     assert loop.task is None

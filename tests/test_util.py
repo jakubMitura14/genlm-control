@@ -167,6 +167,7 @@ def test_lazy_weights_items():
     lw = LazyWeights(weights, encode, decode, log=False)
     assert list(lw.items()) == [("a", 1.0), ("b", 2.0), ("c", 3.0)]
 
+
 def test_load_trie():
     vocab = ["a", "b", "c"]
     trie = load_trie(vocab, backend="sequential")

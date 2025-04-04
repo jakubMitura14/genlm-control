@@ -189,11 +189,11 @@ class SequenceSampler(ABC):
 
     @abstractmethod
     async def sample(self, context=None, draw=sample_dict):
-        pass # pragma: no cover
+        pass  # pragma: no cover
 
     @abstractmethod
     async def infer(self):
-        pass # pragma: no cover
+        pass  # pragma: no cover
 
 
 class Importance(SequenceSampler):

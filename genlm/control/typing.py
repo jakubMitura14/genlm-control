@@ -10,7 +10,7 @@ class TokenType:
 
     def check(self, value):
         """Check if a value matches this type"""
-        raise NotImplementedError
+        raise NotImplementedError() # pragma: no cover
 
     def is_iterable_of(self, element_type):
         """Check if this type can be interpreted as an iterable of element_type.

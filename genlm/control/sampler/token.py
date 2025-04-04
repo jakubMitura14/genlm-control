@@ -47,23 +47,10 @@ class TokenSampler(SubModel):
         Returns:
             (token, weight, logp): A tuple containing the sampled token, weight, and log-probability of the sampled token.
         """
-        raise NotImplementedError("Subclasses must implement sample method")
-
-    async def trace_swor(self, context):
-        from genlm.control.tracer import TraceSWOR
-
-        tracer = TraceSWOR()
-        logP = self.target.alloc_logws()
-        while tracer.root.mass > 0:
-            with tracer:
-                token, logw, logp = await self.sample(context, draw=tracer)
-                token_id = self.target.lookup[token]
-                logP[token_id] = logsumexp([logP[token_id], logw + logp])
-
-        return self.target.make_lazy_weights(logP)
+        raise NotImplementedError("Subclasses must implement sample method") # pragma: no cover
 
     async def cleanup(self):
-        pass
+        pass # pragma: no cover
 
 
 class DirectTokenSampler(TokenSampler):
@@ -110,7 +97,7 @@ class DirectTokenSampler(TokenSampler):
         return token, logws.sum(), logps[token]
 
     async def cleanup(self):
-        pass
+        pass # pragma: no cover
 
 
 class SetTokenSampler(TokenSampler):

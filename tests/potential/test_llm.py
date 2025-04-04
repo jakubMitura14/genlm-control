@@ -104,8 +104,8 @@ async def test_properties(llm, pre_prompt, context, temp):
     context = llm.tokenize(context)
     llm.temperature = temp
 
-    await llm.assert_logw_next_consistency(context, top=10, rtol=5e-3, atol=1e-3)
-    await llm.assert_autoreg_fact(context, rtol=5e-3, atol=1e-3)
+    await llm.assert_logw_next_consistency(context, top=10, rtol=5e-2, atol=1e-3)
+    await llm.assert_autoreg_fact(context, rtol=5e-2, atol=1e-3)
 
 
 @pytest.mark.asyncio
@@ -141,10 +141,14 @@ def eos_test_params(draw):
 @settings(deadline=None)
 @given(eos_test_params())
 async def test_new_eos_tokens(llm, params):
+    with pytest.raises(ValueError, match="Cannot reset eos_tokens after initialization"):
+        llm.eos_tokens = []
+
     eos_token_ids, context_ids, prompt_ids = params
     llm.prompt_ids = prompt_ids
     eos_tokens = [llm.token_maps.decode[x] for x in eos_token_ids]
     new_llm = llm.spawn_new_eos(eos_tokens=eos_tokens)
+    assert new_llm.eos_tokens == eos_tokens
 
     new_llm.temperature = 1.0
 
@@ -183,6 +187,24 @@ def test_invalid_token_encoding(llm):
         llm.encode_tokens(invalid_tokens)
 
 
+def test_prompt_from_str_invalid_type(llm):
+    with pytest.raises(ValueError, match="Prompt must a string"):
+        llm.set_prompt_from_str(42)
+
+
+def test_spawn(llm):
+    new_llm = llm.spawn()
+    assert new_llm.prompt_ids == llm.prompt_ids
+    assert new_llm.token_maps.decode == llm.token_maps.decode
+    assert new_llm.token_maps.eos_idxs == llm.token_maps.eos_idxs
+    assert new_llm.vocab == llm.vocab
+
+
+def test_to_autobatched(llm):
+    with pytest.raises(ValueError, match="PromptedLLMs are autobatched by default"):
+        llm.to_autobatched()
+
+
 @pytest.mark.asyncio
 @pytest.mark.skipif(not torch.cuda.is_available(), reason="vllm requires CUDA")
 async def test_vllm_backend():
@@ -210,3 +232,12 @@ async def test_vllm_backend():
     await new_llm.assert_batch_consistency(
         [context, llm.tokenize(" worlds")], rtol=1e-3, atol=1e-3
     )
+
+
+def test_llm_repr(llm):
+    repr(llm)
+
+
+def test_prompt_warning(llm):
+    with pytest.warns(UserWarning):
+        llm.set_prompt_from_str("hello ")

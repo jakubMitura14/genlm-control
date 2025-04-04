@@ -5,14 +5,13 @@ from .operators import PotentialOps
 from .product import Product
 from .coerce import Coerced
 
-from .built_in import PromptedLLM, PythonLSP, WCFG, BoolCFG, WFSA, BoolFSA
+from .built_in import PromptedLLM, WCFG, BoolCFG, WFSA, BoolFSA
 
 __all__ = [
     "Potential",
     "PotentialOps",
     "Product",
     "PromptedLLM",
-    "PythonLSP",
     "WCFG",
     "BoolCFG",
     "WFSA",

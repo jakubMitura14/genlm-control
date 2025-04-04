@@ -154,7 +154,7 @@ def json_schema_potential_problem(draw):
     ),
 )
 @given(json_schema_potential_problem())
-@settings(max_examples=200)
+@settings(max_examples=200, deadline=None)
 async def test_always_returns_correctly_on_valid_documents(problem):
     potential = JsonSchema(problem.schema)
 

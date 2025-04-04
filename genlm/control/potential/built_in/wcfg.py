@@ -229,3 +229,6 @@ class BoolCFG(Potential):
 
     def __repr__(self):
         return f"BoolCFG(cfg={self.cfg!r})"
+    
+    def _repr_html_(self):
+        return self.cfg._repr_html_()

@@ -100,3 +100,16 @@ async def test_coerced_custom():
     have = await coerced.score([b"aa", b"bb", EOS])
     want = await mock_potential.score(b"ab" + EOS)
     assert have == want
+
+
+def test_coerced_repr():
+    p = MockPotential([b"a"[0], b"b"[0], b"c"[0]])
+    c = Coerced(p, [b"aa", b"bb", b"aab", b"aad"], f=b"".join)
+    repr(c)
+
+
+def test_coerced_no_prune():
+    p = MockPotential([b"a"[0], b"b"[0], b"c"[0]])
+    c = Coerced(p, [b"aa", b"bb", b"aab", b"aad"], f=b"".join, prune=False)
+    assert len(c.vocab) == 4
+    assert set(c.vocab) == {b"aa", b"bb", b"aab", b"aad"}

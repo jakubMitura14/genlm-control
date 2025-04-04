@@ -68,7 +68,7 @@ class Sequences:
                 sorted in descending order by probability.
         """
         posterior = Float.chart()
-        for sequence, prob in zip(self.contexts, np.exp(self.log_normalized_weights)):
+        for sequence, prob in zip(self.contexts, self.normalized_weights):
             posterior[tuple(sequence)] += prob
         return posterior.normalize().sort_descending()
 
@@ -189,11 +189,11 @@ class SequenceSampler(ABC):
 
     @abstractmethod
     async def sample(self, context=None, draw=sample_dict):
-        pass
+        pass # pragma: no cover
 
     @abstractmethod
     async def infer(self):
-        pass
+        pass # pragma: no cover
 
 
 class Importance(SequenceSampler):
@@ -204,7 +204,7 @@ class Importance(SequenceSampler):
         self.n_particles = n_particles
 
     def sample(self, context=None, draw=sample_dict):
-        raise NotImplementedError("SMC does not support sampling")
+        raise NotImplementedError("Importance does not support sampling")
 
     async def infer(self, **kwargs):
         try:
@@ -235,7 +235,7 @@ class SMC(SequenceSampler):
         critic=None,
         max_tokens=float("inf"),
     ):
-        if n_particles < 0:
+        if n_particles < 1:
             raise ValueError("n_particles must be greater than 0")
         if not 0 <= ess_threshold <= 1.0:
             raise ValueError("ess_threshold must be between 0 and 1.0")

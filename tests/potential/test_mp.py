@@ -99,3 +99,12 @@ def test_cleanup(mp_potential):
     assert mp_potential.executor is not None
     mp_potential.__del__()
     assert mp_potential.executor is None
+
+
+def test_mp_repr(mp_potential):
+    repr(mp_potential)
+
+
+def test_mp_spawn(mp_potential):
+    with pytest.raises(ValueError):
+        mp_potential.spawn()

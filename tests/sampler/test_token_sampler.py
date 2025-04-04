@@ -2,7 +2,7 @@ import pytest
 import numpy as np
 
 from genlm.control.sampler import DirectTokenSampler, SetTokenSampler, EagerSetSampler
-from conftest import mock_params, iter_item_params, MockPotential
+from conftest import mock_params, iter_item_params, MockPotential, trace_swor
 
 from hypothesis import given, settings
 
@@ -16,7 +16,7 @@ async def test_direct_token_sampler(params):
     sampler = DirectTokenSampler(mock_potential)
 
     try:
-        have = await sampler.trace_swor(context)
+        have = await trace_swor(sampler, context)
         want = await sampler.target.logw_next(context)
         have.assert_equal(want, atol=1e-5, rtol=1e-5)
     finally:
@@ -40,7 +40,7 @@ async def test_set_token_sampler(params):
     )
 
     try:
-        have = await sampler.trace_swor(context)
+        have = await trace_swor(sampler, context)
         want = await sampler.target.logw_next(context)
         have.assert_equal(want, atol=1e-5, rtol=1e-5)
     finally:

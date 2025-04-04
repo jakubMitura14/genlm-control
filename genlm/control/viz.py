@@ -25,7 +25,7 @@ class InferenceVisualizer:
             json_path="smc_record.json" # save the record to a JSON file
         )
         # visualize the inference run
-        viz.visualize("smc_record.json", auto_open=True)
+        viz.visualize("smc_record.json")
         # clean up visualization server
         viz.shutdown_server()
         ```
@@ -110,7 +110,7 @@ class InferenceVisualizer:
             self._server.server_bind()
             self._server.server_activate()
         except OSError as e:
-            if e.errno == 98:  # Address already in use
+            if e.errno == 48:  # Address already in use
                 raise OSError(f"Port {self._port} is already in use") from None
             raise
 

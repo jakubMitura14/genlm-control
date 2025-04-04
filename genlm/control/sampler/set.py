@@ -31,25 +31,10 @@ class SetSampler(ABC):
     @abstractmethod
     async def sample_set(self, context):
         """Sample a weighted set of tokens from the target potential's vocabulary."""
-        pass
-
-    async def trace_swor(self, context):
-        from genlm.control.tracer import TraceSWOR
-
-        tracer = TraceSWOR()
-        logws = self.target.alloc_logws()
-        while tracer.root.mass > 0:
-            with tracer:
-                set_logws, logp = await self.sample_set(context, draw=tracer)
-                for token_id, logw in enumerate(set_logws.weights):
-                    if logw == float("-inf"):
-                        continue
-                    logws[token_id] = logsumexp([logws[token_id], logw + logp])
-
-        return self.target.make_lazy_weights(logws)
+        pass # pragma: no cover
 
     async def cleanup(self):
-        pass
+        pass # pragma: no cover
 
 
 class TrieSetSampler(SetSampler):
@@ -118,7 +103,7 @@ class TrieSetSampler(SetSampler):
         Raises:
             NotImplementedError: If the method is not implemented in subclasses.
         """
-        raise NotImplementedError("Subclasses must implement sample_set")
+        raise NotImplementedError("Subclasses must implement sample_set") # pragma: no cover
 
     async def cleanup(self):
         """

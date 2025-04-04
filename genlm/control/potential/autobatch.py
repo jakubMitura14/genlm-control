@@ -143,7 +143,7 @@ class AsyncBatchLoop:
             try:
                 task.cancel()
             except RuntimeError:
-                pass  # ignore runtime errors that might occur if event loop is closed
+                pass
             self.task = None
 
     async def cleanup(self):

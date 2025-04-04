@@ -1,7 +1,10 @@
 import pytest
 import numpy as np
 
-from genlm.control.sampler.sequence import Importance, SMC
+
+from genlm.grammar import Float
+from genlm.control.potential import Potential
+from genlm.control.sampler.sequence import Importance, SMC, Sequences, SequenceModel
 from genlm.control.sampler.token import DirectTokenSampler
 
 from hypothesis import strategies as st, settings, given
@@ -11,6 +14,14 @@ from conftest import (
     double_weighted_sequence,
     WeightedSet,
 )
+
+
+@pytest.fixture
+def default_unit_sampler():
+    sequences = ["a", "b", "c"]
+    weights = [1, 2, 3]
+    p = WeightedSet(sequences, weights)
+    return DirectTokenSampler(p)
 
 
 @pytest.mark.asyncio
@@ -125,3 +136,69 @@ async def test_smc_weights(params):
         logZ = sum([(await p.logw_next(seq[:n])).sum() for n in range(len(seq))])
         twist = await critic.score(seq)
         assert np.isclose(logw, logZ + logeps + twist)
+
+
+def test_sequences():
+    sequences = Sequences(
+        contexts=[["a", "b", "c"], ["a", "b", "d"]],
+        log_weights=[np.log(1), np.log(9)],
+        log_probs=[np.log(1), np.log(9)],
+    )
+
+    assert np.allclose(sequences.normalized_weights, [0.1, 0.9])
+
+    assert sequences[0] == (["a", "b", "c"], np.log(1))
+    assert sequences[1] == (["a", "b", "d"], np.log(9))
+
+    assert len(sequences) == 2
+    assert sequences.logp == np.log(1) + np.log(9)
+    assert sequences.log_total == np.log(10)
+
+    sequences._repr_html_()
+    sequences.show()
+
+
+async def test_sequence_model_invalid_start_weight():
+    class MockPotential(Potential):
+        async def prefix(self, context):
+            if not context:
+                return -np.inf
+            return 0
+
+        async def complete(self, context):
+            return 0
+
+    unit_sampler = DirectTokenSampler(MockPotential([0]))
+    with pytest.raises(ValueError, match="Start weight.*"):
+        await SequenceModel(unit_sampler).start()
+
+
+def test_sequence_model_str_for_serialization(default_unit_sampler):
+    SequenceModel(default_unit_sampler).string_for_serialization()
+
+
+def test_sequence_sampler_max_tokens(default_unit_sampler):
+    sampler = Importance(default_unit_sampler, n_particles=10)
+    sampler.max_tokens = 5
+    assert sampler.max_tokens == 5
+
+
+def test_sequence_sampler_invalid_args(default_unit_sampler):
+    with pytest.raises(ValueError, match="n_particles must be greater than 0"):
+        Importance(default_unit_sampler, n_particles=0)
+
+    with pytest.raises(ValueError, match="n_particles must be greater than 0"):
+        SMC(default_unit_sampler, n_particles=0, ess_threshold=0.5)
+
+    with pytest.raises(ValueError, match="ess_threshold must be between 0 and 1.0"):
+        SMC(default_unit_sampler, n_particles=10, ess_threshold=1.5)
+
+
+def test_sequence_sampler_sample_not_implemented(default_unit_sampler):
+    sampler = Importance(default_unit_sampler, n_particles=10)
+    with pytest.raises(NotImplementedError):
+        sampler.sample()
+
+    sampler = SMC(default_unit_sampler, n_particles=10, ess_threshold=0.5)
+    with pytest.raises(NotImplementedError):
+        sampler.sample()

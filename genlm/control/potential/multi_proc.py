@@ -63,9 +63,9 @@ class MultiProcPotential(Potential):
     def _worker_complete(context):
         return MultiProcPotential._run_coroutine(_worker_potential.complete(context))
 
-    @staticmethod
-    def _worker_score(context):
-        return MultiProcPotential._run_coroutine(_worker_potential.score(context))
+    # @staticmethod
+    # def _worker_score(context):
+    #    return MultiProcPotential._run_coroutine(_worker_potential.score(context))
 
     async def _run_in_executor(self, func, *args):
         loop = asyncio.get_event_loop()

@@ -15,14 +15,10 @@ def load_model_by_name(name, backend, **kwargs):
         from genlm.backend.llm import AsyncTransformer
 
         model_cls = AsyncTransformer
-    elif backend == "mock":
-        from genlm.backend.llm import MockAsyncLM
-
-        model_cls = MockAsyncLM
     else:
         raise ValueError(
-            f"Unknown backend: {backend}. Must be one of ['vllm', 'hf', 'mock']"
-        )
+            f"Unknown backend: {backend}. Must be one of ['vllm', 'hf']"
+        ) # pragma: no cover
 
     return model_cls.from_name(name, **kwargs)
 
@@ -153,7 +149,7 @@ class PromptedLLM(Potential):
             (list[bytes]|None): The current prompt as a list of bytes sequences or None if no prompt_ids are set.
         """
         if not self.prompt_ids:
-            return
+            return # pragma: no cover
         return [self.token_maps.decode[x] for x in self.prompt_ids]
 
     def set_prompt_from_str(self, prompt_str):

@@ -5,7 +5,7 @@
 [![codecov](https://codecov.io/github/genlm/control/graph/badge.svg?token=UULSGCWQ4W)](https://codecov.io/github/genlm/control)
 
 
-GenLM Control is a library for controlled generation with programmable constraints. It leverages sequential Monte Carlo (SMC) methods to efficiently generate text that satisfies constraints or preferences encoded by arbitrary potential functions. See the [docs](https://chisym.github.io/genlm-control/) for details and [examples](https://github.com/chisym/genlm-control/tree/main/examples/getting_started.py) for usage.
+GenLM Control is a library for controlled generation with programmable constraints. It leverages sequential Monte Carlo (SMC) methods to efficiently generate text that satisfies constraints or preferences encoded by arbitrary potential functions. See the [docs](https://genlm.github.io/genlm-control/) for details and [examples](https://github.com/genlm/genlm-control/tree/main/examples/getting_started.py) for usage.
 
 
 

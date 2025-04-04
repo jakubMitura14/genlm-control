@@ -5,7 +5,7 @@ import tempfile
 import time
 import requests
 from pathlib import Path
-from genlm_control.viz import InferenceVisualizer
+from genlm.control.viz import InferenceVisualizer
 
 
 def is_port_in_use(port):

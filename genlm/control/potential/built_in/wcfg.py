@@ -1,10 +1,10 @@
 import numpy as np
-from genlm_grammar import CFG, Earley, Float, Boolean
-from genlm_grammar.lark_interface import LarkStuff
-from genlm_grammar.cfglm import _gen_nt
+from genlm.grammar import CFG, Earley, Float, Boolean
+from genlm.grammar.lark_interface import LarkStuff
+from genlm.grammar.cfglm import _gen_nt
 
-from genlm_control.constant import EOS
-from genlm_control.potential.base import Potential
+from genlm.control.constant import EOS
+from genlm.control.potential.base import Potential
 
 
 def _add_eos(cfg, eos):

@@ -1,6 +1,6 @@
 import pytest
 import numpy as np
-from genlm_control.util import LazyWeights
+from genlm.control.util import LazyWeights
 
 
 def test_lazy_weights_basic():

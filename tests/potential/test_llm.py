@@ -4,7 +4,7 @@ import numpy as np
 from arsenal.maths import logsumexp
 from hypothesis import given, strategies as st, settings
 
-from genlm_control.potential.built_in import PromptedLLM
+from genlm.control.potential.built_in import PromptedLLM
 
 # pytest.mark.asyncio seems to cause issues with hypothesis
 # and the vllm backend, so we use asyncio.run here.

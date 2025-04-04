@@ -2,7 +2,7 @@ import pytest
 import asyncio
 import time
 import numpy as np
-from genlm_control.potential import Potential
+from genlm.control.potential import Potential
 
 
 class MockPotential(Potential):

@@ -1,8 +1,8 @@
 import pytest
 import asyncio
 import numpy as np
-from genlm_control.typing import Atomic
-from genlm_control.potential.base import Potential, EOS
+from genlm.control.typing import Atomic
+from genlm.control.potential.base import Potential, EOS
 
 
 class SimplePotential(Potential):

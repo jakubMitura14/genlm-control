@@ -1,8 +1,8 @@
 import re
 import pytest
 import numpy as np
-from genlm_grammar import WFSA as BaseWFSA, Float
-from genlm_control.potential.built_in import WFSA, BoolFSA
+from genlm.grammar import WFSA as BaseWFSA, Float
+from genlm.control.potential.built_in import WFSA, BoolFSA
 from hypothesis import strategies as st, given, settings
 
 

@@ -1,8 +1,8 @@
 import pytest
 import numpy as np
 
-from genlm_control.sampler.sequence import Importance, SMC
-from genlm_control.sampler.token import DirectTokenSampler
+from genlm.control.sampler.sequence import Importance, SMC
+from genlm.control.sampler.token import DirectTokenSampler
 
 from hypothesis import strategies as st, settings, given
 from conftest import (

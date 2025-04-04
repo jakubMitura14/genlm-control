@@ -1,7 +1,7 @@
 from .token import DirectTokenSampler, SetTokenSampler
 from .set import EagerSetSampler, TopKSetSampler
 from .sequence import SMC, Importance, SequenceModel
-from genlm_control.potential import Potential
+from genlm.control.potential import Potential
 
 
 def direct_token_sampler(potential):

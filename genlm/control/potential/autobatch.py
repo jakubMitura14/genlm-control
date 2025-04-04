@@ -2,7 +2,7 @@ import asyncio
 from typing import NamedTuple, Callable
 from collections import defaultdict
 
-from genlm_control.potential.base import Potential
+from genlm.control.potential.base import Potential
 
 
 class Request(NamedTuple):

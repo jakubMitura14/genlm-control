@@ -2,9 +2,9 @@ import asyncio
 import numpy as np
 from dataclasses import dataclass
 
-from genlm_control.potential import Potential
-from genlm_control.util import load_async_trie
-from genlm_control.constant import EOT
+from genlm.control.potential import Potential
+from genlm.control.util import load_async_trie
+from genlm.control.constant import EOT
 
 
 @dataclass

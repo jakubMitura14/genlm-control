@@ -1,5 +1,5 @@
 import numpy as np
-from genlm_control.potential import Potential
+from genlm.control.potential import Potential
 from hypothesis import strategies as st
 
 

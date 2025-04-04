@@ -2,10 +2,10 @@ import string
 import numpy as np
 from arsenal.maths import logsumexp
 
-from genlm_grammar import Float, Log, WFSA as BaseWFSA
-from genlm_grammar.lark_interface import interegular_to_wfsa
+from genlm.grammar import Float, Log, WFSA as BaseWFSA
+from genlm.grammar.lark_interface import interegular_to_wfsa
 
-from genlm_control.potential.base import Potential
+from genlm.control.potential.base import Potential
 
 
 class WFSA(Potential):

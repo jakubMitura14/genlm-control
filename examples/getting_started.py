@@ -1,6 +1,6 @@
-from genlm_control import InferenceEngine
-from genlm_control.potential import PromptedLLM, BoolFSA, Potential
-from genlm_control.sampler import direct_token_sampler, eager_token_sampler
+from genlm.control import InferenceEngine
+from genlm.control.potential import PromptedLLM, BoolFSA, Potential
+from genlm.control.sampler import direct_token_sampler, eager_token_sampler
 
 import torch
 import asyncio

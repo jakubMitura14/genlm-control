@@ -1,14 +1,14 @@
 import numpy as np
 from abc import ABC, abstractmethod
-from genlm_grammar import Float
+from genlm.grammar import Float
 from arsenal.maths import logsumexp, sample_dict
 from functools import cached_property
-from genlm_control import EOS
+from genlm.control import EOS
 from dataclasses import dataclass
 from arsenal import colors
 
-from hfppl import Model
-from hfppl import smc_standard
+from genlm.llamppl import Model
+from genlm.llamppl import smc_standard
 
 
 @dataclass

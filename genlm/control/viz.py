@@ -14,7 +14,7 @@ class InferenceVisualizer:
 
     Example:
         ```python
-        from genlm_control import InferenceVisualizer
+        from genlm.control import InferenceVisualizer
         # create the visualizer
         viz = InferenceVisualizer()
         # run inference and save the record to a JSON file

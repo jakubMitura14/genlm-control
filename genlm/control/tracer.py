@@ -4,13 +4,13 @@ from arsenal import Integerizer, colors
 from arsenal.maths import sample
 from graphviz import Digraph
 
-from genlm_grammar import Float
+from genlm.grammar import Float
 
 import numpy as np
 
 
 def separate_keys_vals(x):
-    from genlm_control.util import LazyWeights
+    from genlm.control.util import LazyWeights
 
     if isinstance(x, LazyWeights):
         return x.keys(), x.values()

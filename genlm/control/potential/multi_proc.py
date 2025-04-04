@@ -1,7 +1,7 @@
 import asyncio
 import numpy as np
 from concurrent.futures import ProcessPoolExecutor
-from genlm_control.potential.base import Potential
+from genlm.control.potential.base import Potential
 
 
 class MultiProcPotential(Potential):

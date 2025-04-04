@@ -5,7 +5,7 @@ GenLM Control is a library for controlled text generation with programmable cons
 ## Getting started
 
 ```python
-from genlm_control import (
+from genlm.control import (
     InferenceEngine, PromptedLLM, BoolFSA, eager_token_sampler
 )
 
@@ -70,7 +70,7 @@ Critics are used to evaluate the quality of a sequence which is in the process o
 The library includes a built-in visualization tool for inference runs, courtesy of [hfppl](https://github.com/probcomp/hfppl).
 
 ```python
-from genlm_control.viz import InferenceVisualizer
+from genlm.control.viz import InferenceVisualizer
 
 # Create a visualizer (starts server on port 8000, you can specify a different port if needed)
 viz = InferenceVisualizer()

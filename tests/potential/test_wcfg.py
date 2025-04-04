@@ -1,7 +1,7 @@
 import pytest
 import numpy as np
-from genlm_grammar import CFG, Float
-from genlm_control.potential.built_in import WCFG, BoolCFG
+from genlm.grammar import CFG, Float
+from genlm.control.potential.built_in import WCFG, BoolCFG
 
 
 @pytest.fixture

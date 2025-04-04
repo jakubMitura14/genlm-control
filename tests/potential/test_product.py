@@ -1,7 +1,7 @@
 import pytest
 import numpy as np
-from genlm_control.potential import Product, Potential
-from genlm_control.typing import Atomic
+from genlm.control.potential import Product, Potential
+from genlm.control.typing import Atomic
 
 
 class SimplePotential(Potential):

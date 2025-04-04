@@ -5,7 +5,7 @@ import regex
 from jsonschema import Draft7Validator, ValidationError
 from jsonschema import _types
 
-from genlm_control.potential.base import Potential
+from genlm.control.potential.base import Potential
 
 
 def is_sequence(checker, instance):

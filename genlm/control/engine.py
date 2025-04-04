@@ -1,8 +1,8 @@
-from genlm_control.potential import Potential
-from genlm_control.sampler.token import TokenSampler
-from genlm_control.sampler.sequence import SequenceModel, _unpack_particles, Sequences
+from genlm.control.potential import Potential
+from genlm.control.sampler.token import TokenSampler
+from genlm.control.sampler.sequence import SequenceModel, _unpack_particles, Sequences
 
-from hfppl import smc_standard
+from genlm.llamppl import smc_standard
 
 
 class InferenceEngine:

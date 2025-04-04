@@ -1,7 +1,7 @@
 import pytest
 import numpy as np
 
-from genlm_control.sampler import EagerSetSampler, TopKSetSampler
+from genlm.control.sampler import EagerSetSampler, TopKSetSampler
 from conftest import iter_item_params, MockPotential
 
 from hypothesis import given, strategies as st, settings

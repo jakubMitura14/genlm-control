@@ -1,7 +1,7 @@
 import pytest
 import numpy as np
 
-from genlm_control.sampler import DirectTokenSampler, SetTokenSampler, EagerSetSampler
+from genlm.control.sampler import DirectTokenSampler, SetTokenSampler, EagerSetSampler
 from conftest import mock_params, iter_item_params, MockPotential
 
 from hypothesis import given, settings

@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from collections.abc import Sequence as SequenceABC
 
-from genlm_control.constant import EndOfSequence
+from genlm.control.constant import EndOfSequence
 
 
 @dataclass

@@ -21,7 +21,7 @@ class PotentialOps:
         Note:
             Potentials must operate on the same token type and the intersection of their vocabularies must be non-empty.
         """
-        from genlm_control.potential.product import Product
+        from genlm.control.potential.product import Product
 
         return Product(self, other)
 
@@ -39,7 +39,7 @@ class PotentialOps:
         Returns:
             (Coerced): A Potential that operates on the vocabulary of `other`.
         """
-        from genlm_control.potential.coerce import Coerced
+        from genlm.control.potential.coerce import Coerced
 
         return Coerced(self, other.vocab, f=f, prune=prune)
 
@@ -51,7 +51,7 @@ class PotentialOps:
         Returns:
             (AutoBatchedPotential): A new potential instance that wraps the current potential and automatically batches concurrent requests to the instance methods.
         """
-        from genlm_control.potential.autobatch import AutoBatchedPotential
+        from genlm.control.potential.autobatch import AutoBatchedPotential
 
         return AutoBatchedPotential(self)
 
@@ -70,7 +70,7 @@ class PotentialOps:
         Note:
             For this method to be used, the potential must implement a picklable `spawn` method.
         """
-        from genlm_control.potential.multi_proc import MultiProcPotential
+        from genlm.control.potential.multi_proc import MultiProcPotential
 
         factory_args = spawn_args or ()
         return MultiProcPotential(

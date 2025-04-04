@@ -4,8 +4,8 @@ from arsenal.maths import logsumexp
 from hypothesis import given, settings, strategies as st
 from conftest import mock_params, mock_vocab_and_ws, MockPotential
 
-from genlm_control.constant import EOT, EOS
-from genlm_control.experimental.subtoken import SubtokenPotential
+from genlm.control.constant import EOT, EOS
+from genlm.control.experimental.subtoken import SubtokenPotential
 
 
 @pytest.mark.asyncio

@@ -1,7 +1,7 @@
 import pytest
 import numpy as np
 
-from genlm_control.potential import Potential, MultiProcPotential
+from genlm.control.potential import Potential, MultiProcPotential
 
 
 class SimplePotential(Potential):

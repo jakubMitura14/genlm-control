@@ -1,8 +1,8 @@
 import pytest
 import numpy as np
-from genlm_control.typing import Atomic
-from genlm_control.constant import EOS
-from genlm_control.potential import Coerced, Potential
+from genlm.control.typing import Atomic
+from genlm.control.constant import EOS
+from genlm.control.potential import Coerced, Potential
 
 
 class MockPotential(Potential):

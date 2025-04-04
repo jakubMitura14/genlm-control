@@ -1,10 +1,10 @@
 import numpy as np
-from genlm_grammar import Float
+from genlm.grammar import Float
 from arsenal.maths import sample_dict, logsumexp
 from arsenal.datastructures import LocatorMaxHeap
 from abc import ABC, abstractmethod
 
-from genlm_control.util import load_async_trie
+from genlm.control.util import load_async_trie
 
 
 class SetSampler(ABC):
@@ -34,7 +34,7 @@ class SetSampler(ABC):
         pass
 
     async def trace_swor(self, context):
-        from genlm_control.tracer import TraceSWOR
+        from genlm.control.tracer import TraceSWOR
 
         tracer = TraceSWOR()
         logws = self.target.alloc_logws()

@@ -1,5 +1,5 @@
 import pytest
-from genlm_control.potential.built_in.json import JsonSchema
+from genlm.control.potential.built_in.json import JsonSchema
 import json
 from typing import Any
 from dataclasses import dataclass

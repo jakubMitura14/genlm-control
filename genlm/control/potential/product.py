@@ -1,6 +1,6 @@
 import asyncio
 import warnings
-from genlm_control.potential.base import Potential
+from genlm.control.potential.base import Potential
 
 
 class Product(Potential):

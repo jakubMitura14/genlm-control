@@ -1,5 +1,5 @@
 import pytest
-from genlm_control.typing import (
+from genlm.control.typing import (
     Atomic,
     Sequence,
     infer_type,

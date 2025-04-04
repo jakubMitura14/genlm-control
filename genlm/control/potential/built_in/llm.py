@@ -3,20 +3,20 @@ import warnings
 import numpy as np
 from typing import NamedTuple
 from arsenal.maths import logsumexp
-from genlm_control.potential.base import Potential
+from genlm.control.potential.base import Potential
 
 
 def load_model_by_name(name, backend, **kwargs):
     if backend == "vllm":
-        from genlm_backend.llm import AsyncVirtualLM
+        from genlm.backend.llm import AsyncVirtualLM
 
         model_cls = AsyncVirtualLM
     elif backend == "hf":
-        from genlm_backend.llm import AsyncTransformer
+        from genlm.backend.llm import AsyncTransformer
 
         model_cls = AsyncTransformer
     elif backend == "mock":
-        from genlm_backend.llm import MockAsyncLM
+        from genlm.backend.llm import MockAsyncLM
 
         model_cls = MockAsyncLM
     else:

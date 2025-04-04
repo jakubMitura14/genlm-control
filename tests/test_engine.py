@@ -1,7 +1,7 @@
 import pytest
-from genlm_control import InferenceEngine
-from genlm_control.potential import Potential, PromptedLLM, BoolFSA
-from genlm_control.sampler import (
+from genlm.control import InferenceEngine
+from genlm.control.potential import Potential, PromptedLLM, BoolFSA
+from genlm.control.sampler import (
     direct_token_sampler,
     eager_token_sampler,
     topk_token_sampler,

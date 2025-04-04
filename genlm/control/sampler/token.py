@@ -1,7 +1,7 @@
 from arsenal.maths import logsumexp
-from genlm_control.util import fast_sample_lazyweights
-from hfppl import SubModel
-from genlm_control.sampler.set import SetSampler
+from genlm.control.util import fast_sample_lazyweights
+from genlm.llamppl import SubModel
+from genlm.control.sampler.set import SetSampler
 
 
 class TokenSampler(SubModel):
@@ -50,7 +50,7 @@ class TokenSampler(SubModel):
         raise NotImplementedError("Subclasses must implement sample method")
 
     async def trace_swor(self, context):
-        from genlm_control.tracer import TraceSWOR
+        from genlm.control.tracer import TraceSWOR
 
         tracer = TraceSWOR()
         logP = self.target.alloc_logws()

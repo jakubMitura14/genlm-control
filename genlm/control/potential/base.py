@@ -2,11 +2,11 @@ import asyncio
 import numpy as np
 from abc import ABC, abstractmethod
 
-from genlm_control.constant import EOS, EndOfSequence
-from genlm_control.util import LazyWeights
-from genlm_control.typing import TokenType, infer_vocabulary_type
-from genlm_control.potential.operators import PotentialOps
-from genlm_control.potential.testing import PotentialTests
+from genlm.control.constant import EOS, EndOfSequence
+from genlm.control.util import LazyWeights
+from genlm.control.typing import TokenType, infer_vocabulary_type
+from genlm.control.potential.operators import PotentialOps
+from genlm.control.potential.testing import PotentialTests
 
 
 class Potential(ABC, PotentialOps, PotentialTests):

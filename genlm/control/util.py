@@ -1,5 +1,5 @@
 import numpy as np
-from genlm_grammar import Float, Log
+from genlm.grammar import Float, Log
 from arsenal.maths import logsumexp
 
 
@@ -218,11 +218,11 @@ def load_trie(V, backend=None, **kwargs):
         backend = "parallel" if torch.cuda.is_available() else "sequential"
 
     if backend == "parallel":
-        from genlm_backend.trie import ParallelTokenCharacterTrie
+        from genlm.backend.trie import ParallelTokenCharacterTrie
 
         return ParallelTokenCharacterTrie(V, **kwargs)
     else:
-        from genlm_backend.trie import TokenCharacterTrie
+        from genlm.backend.trie import TokenCharacterTrie
 
         return TokenCharacterTrie(V, **kwargs)
 
@@ -240,7 +240,7 @@ def load_async_trie(V, backend=None, **kwargs):
     Returns:
         (AsyncTokenCharacterTrie): An async trie instance.
     """
-    from genlm_backend.trie import AsyncTokenCharacterTrie
+    from genlm.backend.trie import AsyncTokenCharacterTrie
 
     return AsyncTokenCharacterTrie(load_trie(V, backend, **kwargs))
 

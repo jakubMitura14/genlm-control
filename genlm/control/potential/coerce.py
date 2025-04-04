@@ -1,4 +1,4 @@
-from genlm_control.potential import Potential
+from genlm.control.potential import Potential
 from itertools import chain
 import asyncio
 

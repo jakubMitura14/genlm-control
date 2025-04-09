@@ -122,6 +122,7 @@ async def test_with_llm_and_critic_no_twist(llm):
 
     await engine.cleanup()
 
+
 @pytest.mark.asyncio
 async def test_with_llm_critic_early_stop(llm):
     mtl_llm = llm.spawn_new_eos([b"."])
@@ -132,7 +133,7 @@ async def test_with_llm_critic_early_stop(llm):
         async def sample(self, context):
             nonlocal n_calls
             n_calls += 1
-            return b"a", float('-inf'), np.nan
+            return b"a", float("-inf"), np.nan
 
     class MockPotential(Potential):
         async def prefix(self, context):
@@ -140,7 +141,7 @@ async def test_with_llm_critic_early_stop(llm):
 
         async def complete(self, context):
             return 0
-        
+
     sampler = MockSampler(mtl_llm)
     engine = InferenceEngine(sampler, critic=MockPotential(mtl_llm.vocab))
 
@@ -161,7 +162,7 @@ async def test_with_llm_no_critic_early_stop(llm):
         async def sample(self, context):
             nonlocal n_calls
             n_calls += 1
-            return b"a", float('-inf'), np.nan
+            return b"a", float("-inf"), np.nan
 
     sampler = MockSampler(mtl_llm)
     engine = InferenceEngine(sampler)

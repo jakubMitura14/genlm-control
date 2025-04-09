@@ -1,4 +1,4 @@
-![genlm_repo_logos 002](https://github.com/user-attachments/assets/b723ca64-92f3-455b-9cfc-c6e8f9a80352)
+![Logo](logo.png)
 
 [![Docs](https://github.com/genlm/control/actions/workflows/docs.yml/badge.svg)](https://genlm.github.io/control/)
 [![Tests](https://github.com/genlm/control/actions/workflows/pytest.yml/badge.svg)](https://genlm.github.io/control/)

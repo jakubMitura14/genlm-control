@@ -1,4 +1,4 @@
-from .token import DirectTokenSampler, SetTokenSampler
+from .token import DirectTokenSampler, SetTokenSampler, AWRS
 from .set import EagerSetSampler, TopKSetSampler
 from .sequence import SMC, Importance, SequenceModel
 from genlm.control.potential import Potential
@@ -54,6 +54,7 @@ def topk_token_sampler(iter_potential, item_potential, K):
 
 
 __all__ = [
+    "AWRS",
     "direct_token_sampler",
     "eager_token_sampler",
     "topk_token_sampler",

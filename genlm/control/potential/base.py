@@ -116,7 +116,6 @@ class Potential(ABC, PotentialOps, PotentialTests):
         Returns:
             (float): Log weight of the context, either as a prefix or complete sequence.
         """
-        # return (await self.batch_score([context]))[0]
         if context and context[-1] == self.eos:
             return await self.complete(context[:-1])
         else:

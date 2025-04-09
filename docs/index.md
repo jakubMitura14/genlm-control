@@ -67,7 +67,7 @@ Critics are used to evaluate the quality of a sequence which is in the process o
 
 ## Visualization
 
-The library includes a built-in visualization tool for inference runs, courtesy of [hfppl](https://github.com/probcomp/hfppl).
+The library includes a built-in visualization tool for inference runs, courtesy of [llamppl](https://github.com/probcomp/hfppl).
 
 ```python
 from genlm.control.viz import InferenceVisualizer

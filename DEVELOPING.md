@@ -13,16 +13,10 @@ cd genlm-control
 and install with pip:
 
 ```bash
-pip install .
-```
-
-This installs the package without development dependencies. For development, install in editable mode with:
-
-```bash
 pip install -e ".[test,docs]"
 ```
 
-which also installs the dependencies needed for testing (test) and documentation (docs).
+This installs the dependencies needed for testing (test) and documentation (docs).
 
 ## Requirements
 

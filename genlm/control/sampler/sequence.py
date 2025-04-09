@@ -4,6 +4,7 @@ from genlm.grammar import Float
 from arsenal.maths import logsumexp, sample_dict
 from functools import cached_property
 from genlm.control import EOS
+from genlm.control.constant import EndOfSequence
 from dataclasses import dataclass
 from arsenal import colors
 
@@ -42,16 +43,28 @@ class Sequences:
     def __post_init__(self):
         assert len(self.contexts) == len(self.log_weights) == len(self.log_probs)
 
+        if not isinstance(self.log_weights, np.ndarray):
+            self.log_weights = np.array(self.log_weights)
+        if not isinstance(self.log_probs, np.ndarray):
+            self.log_probs = np.array(self.log_probs)
+
         self.size = len(self.contexts)
         self.logp = sum(self.log_probs)
+
+        # Handle case where all weights are -inf
+        if np.all(np.isneginf(self.log_weights)):
+            self.log_total = float("-inf")
+            self.log_ml = float("-inf")
+            self.log_normalized_weights = np.full_like(self.log_weights, float("-inf"))
+            self.log_ess = float("-inf")
+            self.ess = 0.0
+            return
+
         self.log_total = logsumexp(self.log_weights)
         max_weight = max(self.log_weights)
-        if np.isfinite(max_weight):
-            self.log_ml = (
-                np.log(np.mean(np.exp(self.log_weights - max_weight))) + max_weight
-            )
-        else:
-            self.log_ml = float("-inf")
+        self.log_ml = (
+            np.log(np.mean(np.exp(self.log_weights - max_weight))) + max_weight
+        )
         self.log_normalized_weights = self.log_weights - self.log_total
         self.log_ess = -logsumexp(2 * self.log_normalized_weights)
         self.ess = np.exp(self.log_ess)
@@ -72,9 +85,39 @@ class Sequences:
             posterior[tuple(sequence)] += prob
         return posterior.normalize().sort_descending()
 
+    @cached_property
+    def decoded_posterior(self):
+        """Compute posterior distribution over completed UTF-8 decodable sequences.
+
+        Filters for sequences that:
+        1. End with an EndOfSequence token
+        2. Can be decoded as UTF-8 strings
+
+        The probability of each sequence corresponds to its normalized weight among completed and decodable sequences.
+        Probabilities of duplicate sequences (after decoding) are summed.
+
+        To obtain the posterior distribution over all byte sequences, use `self.posterior`.
+
+        Returns:
+            (Float.chart): A normalized chart mapping decoded string sequences to their
+                posterior probabilities, sorted in descending order by probability.
+                Only includes sequences that meet both filtering criteria.
+        """
+        posterior = Float.chart()
+        for sequence, w in zip(self.contexts, np.exp(self.log_weights)):
+            if sequence and isinstance(sequence[-1], EndOfSequence):
+                try:
+                    string_sequence = b"".join(sequence[:-1]).decode("utf-8")
+                    posterior[string_sequence] += w
+                except UnicodeDecodeError:
+                    pass
+        return posterior.normalize().sort_descending()
+
     @property
     def normalized_weights(self):
         """Return exponential of normalized log weights."""
+        if np.all(np.isneginf(self.log_weights)):
+            return np.full_like(self.log_weights, 0.0)
         return np.exp(self.log_normalized_weights)
 
     def __len__(self):

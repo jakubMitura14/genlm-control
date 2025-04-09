@@ -1,24 +1,14 @@
 import pytest
-<<<<<<< HEAD
+import numpy as np
 from genlm.control import InferenceEngine
 from genlm.control.potential import Potential, PromptedLLM, BoolFSA
 from genlm.control.sampler import (
-=======
-import numpy as np
-from genlm_control import InferenceEngine
-from genlm_control.potential import Potential, PromptedLLM, BoolFSA
-from genlm_control.sampler import (
->>>>>>> eac48f4 (feat: testing for -inf weight early stopping in both critic and non-critic models)
     direct_token_sampler,
     eager_token_sampler,
     topk_token_sampler,
 )
-<<<<<<< HEAD
 from genlm.control.sampler.token import TokenSampler
 from unittest.mock import Mock
-=======
-from genlm_control.sampler.token import TokenSampler
->>>>>>> eac48f4 (feat: testing for -inf weight early stopping in both critic and non-critic models)
 
 
 @pytest.fixture(scope="module")

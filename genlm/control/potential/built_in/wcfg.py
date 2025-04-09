@@ -227,6 +227,10 @@ class BoolCFG(Potential):
         """Spawn a new BoolCFG."""
         return BoolCFG(self.cfg)
 
+    def clear_cache(self):
+        """Clear the internal cache of the parser."""
+        self.model.clear_cache()
+
     def __repr__(self):
         return f"BoolCFG(cfg={self.cfg!r})"
 

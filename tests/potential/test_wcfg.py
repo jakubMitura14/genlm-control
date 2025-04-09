@@ -167,3 +167,9 @@ def test_wcfg_clear_cache():
     c = CFG(Float, S="S", V={b"a"[0]})
     pot = WCFG(c)
     pot.clear_cache()
+
+
+def test_bcfg_clear_cache():
+    c = CFG(Boolean, S="S", V={b"a"[0]})
+    pot = BoolCFG(c)
+    pot.clear_cache()

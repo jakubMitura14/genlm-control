@@ -11,7 +11,7 @@ GenLM Control is a library for controlled generation with programmable constrain
 
 ## Quick Start
 
-This library supports installation via pip:
+TODO: This library supports installation via pip:
 
 ```bash
 pip install genlm-control

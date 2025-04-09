@@ -143,3 +143,32 @@ def test_product_vocab_overlap():
 
     with pytest.warns(RuntimeWarning):
         Product(p2, p1)
+
+
+@pytest.mark.asyncio
+async def test_product_laziness():
+    class InfiniteAndCounterPotential(Potential):
+        def __init__(self):
+            super().__init__([b"a", b"b", b"c"])
+            self.prefix_calls = 0
+            self.complete_calls = 0
+
+        async def complete(self, context):
+            self.complete_calls += 1
+            return float("-inf")
+
+        async def prefix(self, context):
+            self.prefix_calls += 1
+            return float("-inf")
+
+    p1 = InfiniteAndCounterPotential()
+    p2 = InfiniteAndCounterPotential()
+    product = Product(p1, p2)
+
+    await product.prefix([])
+    assert product.p1.prefix_calls == 1
+    assert product.p2.prefix_calls == 0
+
+    await product.complete([])
+    assert product.p1.complete_calls == 1
+    assert product.p2.complete_calls == 0

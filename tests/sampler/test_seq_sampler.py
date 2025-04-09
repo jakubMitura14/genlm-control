@@ -168,8 +168,9 @@ async def test_sequence_model_invalid_start_weight():
             return 0
 
     unit_sampler = DirectTokenSampler(MockPotential([0]))
+    seq_model = SequenceModel(unit_sampler)
     with pytest.raises(ValueError, match="Start weight.*"):
-        await SequenceModel(unit_sampler).start()
+        await seq_model.start()
 
 
 def test_sequence_model_str_for_serialization(default_unit_sampler):

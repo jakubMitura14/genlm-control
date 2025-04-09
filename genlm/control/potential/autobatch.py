@@ -142,8 +142,8 @@ class AsyncBatchLoop:
         if task := getattr(self, "task", None):
             try:
                 task.cancel()
-            except RuntimeError:
-                pass
+            except RuntimeError:  # pragma: no cover
+                pass  # pragma: no cover
             self.task = None
 
     async def cleanup(self):

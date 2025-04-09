@@ -8,9 +8,9 @@ from genlm.control.potential.base import Potential
 
 def load_model_by_name(name, backend, **kwargs):
     if backend == "vllm":
-        from genlm.backend.llm import AsyncVirtualLM
+        from genlm.backend.llm import AsyncVirtualLM  # pragma: no cover
 
-        model_cls = AsyncVirtualLM
+        model_cls = AsyncVirtualLM  # pragma: no cover
     elif backend == "hf":
         from genlm.backend.llm import AsyncTransformer
 

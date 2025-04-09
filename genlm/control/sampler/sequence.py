@@ -7,8 +7,8 @@ from genlm.control import EOS
 from dataclasses import dataclass
 from arsenal import colors
 
-from genlm.llamppl import Model
-from genlm.llamppl import smc_standard
+from llamppl import Model
+from llamppl import smc_standard
 
 
 @dataclass

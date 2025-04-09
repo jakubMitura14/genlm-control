@@ -2,7 +2,7 @@ from genlm.control.potential import Potential
 from genlm.control.sampler.token import TokenSampler
 from genlm.control.sampler.sequence import SequenceModel, _unpack_particles, Sequences
 
-from genlm.llamppl import smc_standard
+from llamppl import smc_standard
 
 
 class InferenceEngine:
@@ -91,7 +91,7 @@ class InferenceEngine:
             json_path (str, optional): JSON file path for saving a record of the inference run.
                 This can be used in conjunction with the `InferenceVisualizer` to visualize the inference run.
             **kwargs (dict): Additional keyword arguments to pass to the SMC algorithm.
-                See the `hfppl.inference.smc_standard` documentation for more details.
+                See the `llamppl.inference.smc_standard` documentation for more details.
 
         Returns:
             (Sequences): A container holding the generated sequences, their importance weights, and

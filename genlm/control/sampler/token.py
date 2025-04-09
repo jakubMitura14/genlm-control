@@ -1,5 +1,5 @@
 from genlm.control.util import fast_sample_lazyweights
-from genlm.llamppl import SubModel
+from llamppl import SubModel
 from genlm.control.sampler.set import SetSampler
 
 

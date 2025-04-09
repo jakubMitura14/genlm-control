@@ -15,9 +15,9 @@ authors = [
     { name = "The GenLM Team" },
 ]
 dependencies = [
-    "genlm-grammar @ git+https://github.com/genlm/genlm-grammar.git@main",
-    "genlm-backend @ git+https://github.com/genlm/backend.git@main",
-    "genlm-llamppl @ git+https://github.com/probcomp/hfppl.git@rename",
+    "genlm-grammar==0.2.0a0",
+    "genlm-backend==0.1.0a1",
+    "llamppl @ git+https://github.com/probcomp/hfppl.git@llamppl",
     "arsenal>=3.1.2",
     "IPython",
     "numpy",
@@ -49,7 +49,7 @@ docs = [
 ]
 
 [tool.setuptools.packages.find]
-include = ["genlm*"]
+include = ["genlm", "genlm/control"]
 
 [tool.setuptools]
 package-data = { "genlm.control" = ["html/*"] }

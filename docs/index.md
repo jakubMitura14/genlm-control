@@ -41,8 +41,8 @@ coerced_fsa = fsa.coerce(llm, f=b"".join)
 token_sampler = AWRS(llm, coerced_fsa)
 
 # Generate text using SMC.
-# Generation is asynchronous; use `await` if calling in an async context (like a Jupyter notebook cell),
-# or asyncio.run(token_sampler.smc(...)) otherwise.
+# Generation is asynchronous; use `await` if calling in an async context (like in an async
+# function or in a Jupyter notebook) and `asyncio.run(token_sampler.smc(...))` otherwise.
 sequences = await token_sampler.smc(
     n_particles=10, # Number of candidate sequences to maintain
     ess_threshold=0.5, # Threshold for resampling
@@ -135,8 +135,8 @@ coerced_schema = schema_potential.coerce(llm, f=b"".join)
 token_sampler = AWRS(llm, coerced_schema)
 
 # Generate text using SMC.
-# Generation is asynchronous; use `await` if calling in an async context (like a Jupyter notebook cell),
-# or asyncio.run(token_sampler.smc(...)) otherwise.
+# Generation is asynchronous; use `await` if calling in an async context (like in an async
+# function or in a Jupyter notebook) and `asyncio.run(token_sampler.smc(...))` otherwise.
 sequences = await token_sampler.smc(
     n_particles=2, # Number of candidate sequences to maintain
     ess_threshold=0.5, # Threshold for resampling
@@ -150,7 +150,7 @@ sequences.decoded_posterior
 
 ### More examples
 
-See the [examples](https://github.com/genlm/genlm-control/tree/main/examples/getting_started.py) to get an overview of the full range of features, including how to specify custom potential functions.
+See the [examples/getting_started.py](https://github.com/genlm/genlm-control/tree/main/examples/getting_started.py) to get an overview of the full range of features, including how to specify custom potential functions.
 
 ## Development
 

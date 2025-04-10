@@ -79,7 +79,7 @@ class InferenceVisualizer:
             auto_open (bool): Whether to automatically open in browser
 
         Returns:
-            str: URL where visualization can be accessed
+            (str): URL where visualization can be accessed
         """
         if self._server is None:
             raise RuntimeError("Server is not running")

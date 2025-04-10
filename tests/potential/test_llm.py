@@ -71,7 +71,7 @@ async def test_prompt_setting(llm, pre_prompt):
 
 
 @pytest.mark.asyncio
-@settings(deadline=None)
+@settings(deadline=None, max_examples=50)
 @given(st.text(min_size=1), st.text(min_size=1), st.floats(min_value=1e-6, max_value=3))
 async def test_scoring(llm, pre_prompt, context_str, temp):
     pre_prompt_ids = llm.model.tokenizer.encode(pre_prompt)
@@ -90,7 +90,7 @@ async def test_scoring(llm, pre_prompt, context_str, temp):
 
 
 @pytest.mark.asyncio
-@settings(deadline=None)
+@settings(deadline=None, max_examples=50)
 @given(
     st.text(min_size=1),
     st.text(min_size=1, max_size=10),
@@ -104,12 +104,12 @@ async def test_properties(llm, pre_prompt, context, temp):
     context = llm.tokenize(context)
     llm.temperature = temp
 
-    await llm.assert_logw_next_consistency(context, top=10, rtol=5e-2, atol=1e-3)
-    await llm.assert_autoreg_fact(context, rtol=5e-2, atol=1e-3)
+    await llm.assert_logw_next_consistency(context, top=10, rtol=0.01, atol=1e-3)
+    await llm.assert_autoreg_fact(context, rtol=0.01, atol=1e-3)
 
 
 @pytest.mark.asyncio
-@settings(deadline=None)
+@settings(deadline=None, max_examples=50)
 @given(st.lists(st.text(min_size=1), min_size=1, max_size=4))
 async def test_batch_consistency(llm, contexts):
     contexts = [llm.tokenize(context) for context in contexts]

@@ -3,7 +3,7 @@ import numpy as np
 
 
 from genlm.control.potential import Potential
-from genlm.control.sampler.sequence import Importance, SMC, Sequences, SequenceModel
+from genlm.control.sampler.sequence import SMC, Sequences, SequenceModel
 from genlm.control.sampler.token import DirectTokenSampler
 
 from hypothesis import strategies as st, settings, given
@@ -33,9 +33,9 @@ async def test_importance(S):
     unit_sampler = DirectTokenSampler(p)
 
     n_particles = 100
-    sampler = Importance(unit_sampler, n_particles)
+    sampler = SMC(unit_sampler)
 
-    sequences = await sampler.infer()
+    sequences = await sampler(n_particles=n_particles, ess_threshold=0, max_tokens=10)
     assert len(sequences) == n_particles
     assert np.isclose(sequences.log_ml, np.log(sum(weights)), atol=1e-3, rtol=1e-5)
 
@@ -51,8 +51,8 @@ async def test_importance_with_critic(S):
     critic = WeightedSet(sequences, weights2)
 
     n_particles = 10
-    sampler = Importance(unit_sampler, n_particles=n_particles, critic=critic)
-    sequences = await sampler.infer()
+    sampler = SMC(unit_sampler, critic=critic)
+    sequences = await sampler(n_particles=n_particles, ess_threshold=0, max_tokens=10)
 
     logeps = await p.prefix([])
     for seq, logw in sequences:
@@ -70,9 +70,11 @@ async def test_smc(S, ess_threshold):
     unit_sampler = DirectTokenSampler(p)
 
     n_particles = 100
-    sampler = SMC(unit_sampler, n_particles, ess_threshold)
+    sampler = SMC(unit_sampler)
 
-    sequences = await sampler.infer()
+    sequences = await sampler(
+        n_particles=n_particles, ess_threshold=ess_threshold, max_tokens=10
+    )
     assert len(sequences) == n_particles
     assert np.isclose(sequences.log_ml, np.log(sum(weights)), atol=1e-3, rtol=1e-5)
 
@@ -90,9 +92,11 @@ async def test_smc_with_critic(ess_threshold):
     critic = WeightedSet(seqs, weights2)
 
     n_particles = 500
-    sampler = SMC(unit_sampler, n_particles, ess_threshold=ess_threshold, critic=critic)
+    sampler = SMC(unit_sampler, critic=critic)
 
-    sequences = await sampler.infer()
+    sequences = await sampler(
+        n_particles=n_particles, ess_threshold=ess_threshold, max_tokens=10
+    )
 
     intersection_ws = [w1 * w2 for w1, w2 in zip(weights1, weights2)]
     assert len(sequences) == n_particles
@@ -120,15 +124,13 @@ async def test_smc_weights(params):
     critic = WeightedSet(sequences, weights2)
 
     n_particles = 10
-    sampler = SMC(
-        unit_sampler,
-        critic=critic,
+    sampler = SMC(unit_sampler, critic=critic)
+
+    sequences = await sampler(
         n_particles=n_particles,
         ess_threshold=0,  # don't resample since that would reset weights
         max_tokens=stop_point,
     )
-
-    sequences = await sampler.infer()
 
     logeps = await p.prefix([])
     for seq, logw in sequences:
@@ -175,30 +177,3 @@ async def test_sequence_model_invalid_start_weight():
 
 def test_sequence_model_str_for_serialization(default_unit_sampler):
     SequenceModel(default_unit_sampler).string_for_serialization()
-
-
-def test_sequence_sampler_max_tokens(default_unit_sampler):
-    sampler = Importance(default_unit_sampler, n_particles=10)
-    sampler.max_tokens = 5
-    assert sampler.max_tokens == 5
-
-
-def test_sequence_sampler_invalid_args(default_unit_sampler):
-    with pytest.raises(ValueError, match="n_particles must be greater than 0"):
-        Importance(default_unit_sampler, n_particles=0)
-
-    with pytest.raises(ValueError, match="n_particles must be greater than 0"):
-        SMC(default_unit_sampler, n_particles=0, ess_threshold=0.5)
-
-    with pytest.raises(ValueError, match="ess_threshold must be between 0 and 1.0"):
-        SMC(default_unit_sampler, n_particles=10, ess_threshold=1.5)
-
-
-def test_sequence_sampler_sample_not_implemented(default_unit_sampler):
-    sampler = Importance(default_unit_sampler, n_particles=10)
-    with pytest.raises(NotImplementedError):
-        sampler.sample()
-
-    sampler = SMC(default_unit_sampler, n_particles=10, ess_threshold=0.5)
-    with pytest.raises(NotImplementedError):
-        sampler.sample()

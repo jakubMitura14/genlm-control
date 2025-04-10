@@ -1,6 +1,6 @@
 from .token import DirectTokenSampler, SetTokenSampler, AWRS
 from .set import EagerSetSampler, TopKSetSampler
-from .sequence import SMC, Importance, SequenceModel
+from .sequence import SMC, SequenceModel
 from genlm.control.potential import Potential
 
 

@@ -1,25 +1,152 @@
 import numpy as np
-from abc import ABC, abstractmethod
 from genlm.grammar import Float
-from arsenal.maths import logsumexp, sample_dict
+from arsenal.maths import logsumexp
 from functools import cached_property
-from genlm.control import EOS
-from genlm.control.constant import EndOfSequence
 from dataclasses import dataclass
 from arsenal import colors
 
 from llamppl import Model
 from llamppl import smc_standard
 
+from genlm.control.potential import Potential
+from genlm.control.constant import EOS, EndOfSequence
+from genlm.control.sampler.token import TokenSampler
+
+
+class SMC:
+    """This class implements sequential Monte Carlo (SMC) inference for controlled text generation.
+    The generation process works as follows:
+
+    1. Token Sampling: At each step, the `unit_sampler` is used to extend each particle (candidate sequence)
+       by sampling a new token. This grows all sequences by one token at a time. The sampler also outputs
+       an importance weight with each extension to correct for the myopic nature of token-by-token sampling.
+
+    2. Critic Evaluation: If a `critic` is provided, it scores the updated sequences (via it's `score` method),
+       reweighting the particles based on how well they satisfy the constraints encoded by the critic.
+
+    3. Resampling: When the effective sample size (ESS) falls below the threshold,
+       particles are resampled according to their weights. This helps focus computation
+       on more promising sequences.
+
+    4. Termination: The process continues until either:\n
+        - All sequences reach an end-of-sequence (EOS) token\n
+        - The maximum token length is reached
+
+    If a critic is provided, the resulting sequences are properly weighted with respect to the product of the unit sampler's
+    target potential and the critic potential (`unit_sampler.target * critic`). If a critic is not provided,
+    the resulting sequences are weighted with respect to the unit sampler's target potential.
+
+    Args:
+        unit_sampler (TokenSampler): The sampler that generates tokens.
+        critic (Potential, optional): A potential function that guides the generation process
+            by scoring candidate sequences. Must have the same token type as the unit_sampler.
+
+    Raises:
+        ValueError: If unit_sampler is not a TokenSampler, if critic is not a Potential,
+            or if the token types of unit_sampler and critic don't match.
+    """
+
+    def __init__(self, unit_sampler, critic=None):
+        if not isinstance(unit_sampler, TokenSampler):
+            raise ValueError("`unit_sampler` must be a TokenSampler")
+
+        if critic:
+            if not isinstance(critic, Potential):
+                raise ValueError("`critic` must be a Potential")
+            if not unit_sampler.token_type == critic.token_type:
+                raise ValueError(
+                    "`critic` must have the same token type as the `unit_sampler`. "
+                    f"Got {unit_sampler.token_type} and {critic.token_type}."
+                    + (
+                        "\nMaybe you forgot to coerce the critic to the token type of the unit sampler? See `Coerce`."
+                        if unit_sampler.token_type.is_iterable_of(critic.token_type)
+                        else ""
+                    )
+                )
+
+        self.unit_sampler = unit_sampler
+        self.critic = critic
+        self.model = SequenceModel(
+            unit_sampler=unit_sampler, critic=critic, max_tokens=float("inf")
+        )
+
+    async def __call__(
+        self,
+        n_particles,
+        ess_threshold,
+        max_tokens,
+        verbosity=0,
+        json_path=None,
+        **kwargs,
+    ):
+        """Generate sequences using sequential Monte Carlo inference.
+
+        Args:
+            n_particles (int): Number of particles (candidate sequences) to maintain during
+                generation. Higher values provide better exploration but require more
+                computation.
+            ess_threshold (float): Effective sample size threshold for resampling,
+                expressed as a fraction of the number of particles. When ESS falls below
+                this value, particles are resampled according to their weights. Should be between 0 and 1.
+                Higher values lead to more frequent resampling. Note that when ess_threshold = 0,
+                the critic is only applied at the end of the generation (if it is provided).
+            max_tokens (int): Maximum number of tokens to generate per sequence. Generation
+                may terminate earlier if all sequences reach an EOS token.
+            verbosity (int, optional): Verbosity level for the SMC algorithm. 0 is silent, 1 prints the
+                particles at each step. Default is 0.
+            json_path (str, optional): JSON file path for saving a record of the inference run.
+                This can be used in conjunction with the `InferenceVisualizer` to visualize the inference run.
+            **kwargs (dict): Additional keyword arguments to pass to the SMC algorithm.
+                See the `llamppl.inference.smc_standard` documentation for more details.
+
+        Returns:
+            (Sequences): A container holding the generated sequences, their importance weights, and
+                other metadata from the generation process.
+        """
+        try:
+            original_max_tokens = self.model.max_tokens
+            original_verbosity = self.model.verbosity
+            original_twist_with_critic = self.model.twist_with_critic
+            self.model.max_tokens = max_tokens
+            self.model.verbosity = verbosity
+            self.model.twist_with_critic = ess_threshold > 0
+
+            particles = await smc_standard(
+                model=self.model,
+                n_particles=n_particles,
+                ess_threshold=ess_threshold,
+                json_file=json_path,
+                **kwargs,
+            )
+        finally:
+            self.model.max_tokens = original_max_tokens
+            self.model.verbosity = original_verbosity
+            self.model.twist_with_critic = original_twist_with_critic
+
+        return Sequences(*_unpack_particles(particles))
+
+    async def cleanup(self):
+        """Clean up resources used by the inference engine.
+
+        This method should be called when the InferenceEngine is no longer needed.
+
+        Example:
+            ```python
+            sampler = SequenceSampler(unit_sampler, critic)
+            try:
+                sequences = await sampler(n_particles=10, ess_threshold=0.5, max_tokens=20)
+            finally:
+                await sampler.cleanup()
+            ```
+        """
+        await self.unit_sampler.cleanup()
+        if self.critic:
+            await self.critic.cleanup()
+
 
 @dataclass
 class Sequences:
     """Container for sequence samples with their weights and probabilities.
-
-    This class stores and processes the results of sequence generation, including the
-    sequences themselves, their importance weights, and their log probabilities. It
-    provides utilities for analyzing the samples, including effective sample
-    size (ESS) calculations and posterior distribution estimation.
 
     Args:
         contexts (list): List of token sequences generated by the sampler.
@@ -89,8 +216,8 @@ class Sequences:
     def decoded_posterior(self):
         """Compute posterior distribution over completed UTF-8 decodable sequences.
 
-        Filters for sequences that:
-        1. End with an EndOfSequence token
+        Filters for sequences that:\n
+        1. End with an EndOfSequence token\n
         2. Can be decoded as UTF-8 strings
 
         The probability of each sequence corresponds to its normalized weight among completed and decodable sequences.
@@ -130,10 +257,13 @@ class Sequences:
         return self.contexts[i], self.log_weights[i]
 
     def __str__(self):
-        return str(self.posterior)
+        return str(self.decoded_posterior)
 
     def _repr_html_(self):
-        return self.posterior._repr_html_()
+        return self.decoded_posterior._repr_html_()
+
+    def __repr__(self):
+        return str(self.decoded_posterior)
 
     def show(self):
         for p in sorted(self, reverse=True):
@@ -158,7 +288,7 @@ class SequenceModel(Model):
         if start_w == float("-inf"):
             raise ValueError(
                 "Start weight is -inf (log(0)). This is likely because a potential assigns zero weight to "
-                "the empty sequence as a prefix, which violates the potential contract."
+                "the empty sequence under `prefix`, which violates the potential contract."
             )
         self.score(start_w)
 
@@ -219,94 +349,3 @@ def _unpack_particles(particles):
         ),
     )
     return contexts, logws, logps
-
-
-class SequenceSampler(ABC):
-    """Abstract base class for sequence samplers."""
-
-    def __init__(self, unit_sampler, critic=None, max_tokens=float("inf")):
-        self.unit_sampler = unit_sampler
-        self.critic = critic
-        self.model = SequenceModel(unit_sampler, critic, max_tokens)
-
-    @property
-    def max_tokens(self):
-        return self.model.max_tokens
-
-    @max_tokens.setter
-    def max_tokens(self, value):
-        self.model.max_tokens = value
-
-    @abstractmethod
-    async def sample(self, context=None, draw=sample_dict):
-        pass  # pragma: no cover
-
-    @abstractmethod
-    async def infer(self):
-        pass  # pragma: no cover
-
-
-class Importance(SequenceSampler):
-    def __init__(self, unit_sampler, n_particles, critic=None, max_tokens=float("inf")):
-        if n_particles < 1:
-            raise ValueError("n_particles must be greater than 0")
-        super().__init__(unit_sampler, critic, max_tokens)
-        self.n_particles = n_particles
-
-    def sample(self, context=None, draw=sample_dict):
-        raise NotImplementedError("Importance does not support sampling")
-
-    async def infer(self, **kwargs):
-        try:
-            original_critic_condition = self.model.twist_with_critic
-            self.model.twist_with_critic = False
-
-            particles = await smc_standard(
-                model=self.model,
-                n_particles=self.n_particles,
-                ess_threshold=0,
-                **kwargs,
-            )
-        finally:
-            self.model.twist_with_critic = original_critic_condition
-
-        contexts, logws, logps = _unpack_particles(particles)
-        assert len(contexts) == len(logws) == len(logps)
-
-        return Sequences(contexts, logws, logps)
-
-
-class SMC(SequenceSampler):
-    def __init__(
-        self,
-        unit_sampler,
-        n_particles,
-        ess_threshold,
-        critic=None,
-        max_tokens=float("inf"),
-    ):
-        if n_particles < 1:
-            raise ValueError("n_particles must be greater than 0")
-        if not 0 <= ess_threshold <= 1.0:
-            raise ValueError("ess_threshold must be between 0 and 1.0")
-
-        super().__init__(unit_sampler, critic, max_tokens)
-        self.n_particles = n_particles
-        self.ess_threshold = ess_threshold
-
-    def sample(self, context=None, draw=sample_dict):
-        # Eventually implement to support nested SMC.
-        raise NotImplementedError("SMC does not support sampling")
-
-    async def infer(self, **kwargs):
-        particles = await smc_standard(
-            model=self.model,
-            n_particles=self.n_particles,
-            ess_threshold=self.ess_threshold,
-            **kwargs,
-        )
-
-        contexts, logws, logps = _unpack_particles(particles)
-        assert len(contexts) == len(logws) == len(logps)
-
-        return Sequences(contexts, logws, logps)

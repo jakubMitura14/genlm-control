@@ -57,6 +57,29 @@ class TokenSampler(SubModel):
     async def cleanup(self):
         pass  # pragma: no cover
 
+    async def smc(self, n_particles, ess_threshold, max_tokens, critic=None, **kwargs):
+        """Generate sequences using sequential Monte Carlo (SMC) inference with this token sampler and an optional critic.
+
+        This method is a convenience wrapper around [`InferenceEngine`][genlm.control.engine.InferenceEngine].
+        See [`InferenceEngine`][genlm.control.engine.InferenceEngine] for more details on the generation process.
+
+        Args:
+            n_particles (int): The number of particles to use in the SMC algorithm.
+            ess_threshold (float): The threshold for the effective sample size (ESS).
+            max_tokens (int): The maximum number of tokens to generate.
+            critic (Potential, optional): A potential function that guides the generation process
+                by scoring candidate sequences. Must have the same token type as the token sampler.
+            **kwargs (dict): Additional keyword arguments to pass to the `InferenceEngine`'s `__call__` method.
+        """
+        from genlm.control.sampler.sequence import SMC
+
+        return await SMC(self, critic)(
+            n_particles=n_particles,
+            ess_threshold=ess_threshold,
+            max_tokens=max_tokens,
+            **kwargs,
+        )
+
 
 class DirectTokenSampler(TokenSampler):
     """Samples individual tokens directly from the log-normalized `logw_next` function

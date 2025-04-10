@@ -1,16 +1,14 @@
 import pytest
 import numpy as np
-from genlm.control.sampler.sequence import Sequences, EndOfSequence
+from genlm.control.sampler.sequence import Sequences, EndOfSequence, EOS
 
 
 def test_initialization():
     sequences = Sequences(
         contexts=[[b"a"], [b"b"]],
         log_weights=[np.log(0.4), np.log(0.6)],
-        log_probs=[-1.0, -2.0],
     )
     assert sequences.size == 2
-    assert sequences.logp == -3.0  # sum of log_probs
     assert np.isclose(np.exp(sequences.log_total), 1.0)  # weights sum to 1
     assert len(sequences) == 2
 
@@ -18,7 +16,7 @@ def test_initialization():
 def test_initialization_validation():
     # Test mismatched lengths
     with pytest.raises(AssertionError):
-        Sequences(contexts=[[b"a"]], log_weights=[0.0, 0.0], log_probs=[0.0])
+        Sequences(contexts=[[b"a"]], log_weights=[0.0, 0.0])
 
 
 def test_posterior():
@@ -29,7 +27,6 @@ def test_posterior():
             [b"world", EndOfSequence()],
         ],
         log_weights=[np.log(0.4), np.log(0.6)],
-        log_probs=[0.0, 0.0],
     )
     posterior = sequences.posterior
     assert len(posterior) == 2
@@ -41,7 +38,6 @@ def test_normalized_weights():
     sequences = Sequences(
         contexts=[[b"a"], [b"b"]],
         log_weights=[np.log(3), np.log(7)],
-        log_probs=[0.0, 0.0],
     )
     weights = sequences.normalized_weights
     assert np.allclose(weights, [0.3, 0.7])
@@ -51,9 +47,7 @@ def test_normalized_weights():
 def test_iteration_and_indexing():
     contexts = [[b"a"], [b"b"]]
     log_weights = [np.log(0.3), np.log(0.7)]
-    sequences = Sequences(
-        contexts=contexts, log_weights=log_weights, log_probs=[0.0, 0.0]
-    )
+    sequences = Sequences(contexts=contexts, log_weights=log_weights)
 
     # Test __iter__
     for i, (ctx, weight) in enumerate(sequences):
@@ -70,7 +64,6 @@ def test_effective_sample_size():
     sequences = Sequences(
         contexts=[[b"a"], [b"b"], [b"c"]],
         log_weights=[0.0, 0.0, 0.0],  # equal weights
-        log_probs=[0.0, 0.0, 0.0],
     )
     assert np.isclose(sequences.ess, 3.0)  # ESS should equal number of particles
 
@@ -82,7 +75,6 @@ def test_effective_sample_size():
             float("-inf"),
             float("-inf"),
         ],  # one particle has all weight
-        log_probs=[0.0, 0.0, 0.0],
     )
     assert np.isclose(sequences.ess, 1.0)
 
@@ -92,16 +84,14 @@ def test_log_ml_calculation():
     sequences = Sequences(
         contexts=[[b"a"], [b"b"]],
         log_weights=[np.log(0.3), np.log(0.7)],
-        log_probs=[0.0, 0.0],
     )
     assert np.isfinite(sequences.log_ml)
     assert sequences.log_ml <= sequences.log_total
 
 
 def test_empty_sequences():
-    sequences = Sequences(contexts=[], log_weights=[], log_probs=[])
+    sequences = Sequences(contexts=[], log_weights=[])
     assert sequences.size == 0
-    assert sequences.logp == 0
     assert len(sequences.posterior) == 0
     assert len(sequences.decoded_posterior) == 0
 
@@ -115,16 +105,13 @@ def test_posterior_normalization():
             [b"test", EndOfSequence()],
         ],
         log_weights=[np.log(2), np.log(5), np.log(3)],
-        log_probs=[0.0, 0.0, 0.0],
     )
     posterior = sequences.posterior
     assert np.isclose(sum(posterior.values()), 1.0)
 
 
 def test_string_representation():
-    sequences = Sequences(
-        contexts=[[b"test", EndOfSequence()]], log_weights=[0.0], log_probs=[0.0]
-    )
+    sequences = Sequences(contexts=[[b"test", EndOfSequence()]], log_weights=[0.0])
     # Test that string representation doesn't raise errors
     str(sequences)
     repr(sequences)
@@ -132,9 +119,7 @@ def test_string_representation():
 
 def test_decoded_posterior_basic_sequence():
     # Simple case with one valid UTF-8 sequence
-    sequences = Sequences(
-        contexts=[[b"hello", EndOfSequence()]], log_weights=[0.0], log_probs=[0.0]
-    )
+    sequences = Sequences(contexts=[[b"hello", EndOfSequence()]], log_weights=[0.0])
     posterior = sequences.decoded_posterior
     assert len(posterior) == 1
     assert posterior["hello"] == 1.0
@@ -145,7 +130,6 @@ def test_decoded_posterior_multiple_sequences():
     sequences = Sequences(
         contexts=[[b"hello", EndOfSequence()], [b"world", EndOfSequence()]],
         log_weights=[np.log(0.7), np.log(0.3)],
-        log_probs=[0.0, 0.0],
     )
     posterior = sequences.decoded_posterior
     assert len(posterior) == 2
@@ -162,7 +146,6 @@ def test_duplicate_sequences():
             [b"world", EndOfSequence()],
         ],
         log_weights=[np.log(4), np.log(4), np.log(2)],
-        log_probs=[0.0, 0.0, 0.0],
     )
     posterior = sequences.decoded_posterior
     assert len(posterior) == 2
@@ -175,7 +158,6 @@ def test_no_eos_sequences():
     sequences = Sequences(
         contexts=[[b"hello"], [b"world"]],
         log_weights=[np.log(0.6), np.log(0.4)],
-        log_probs=[0.0, 0.0],
     )
     posterior = sequences.decoded_posterior
     assert len(posterior) == 0
@@ -190,7 +172,6 @@ def test_mixed_eos_and_non_eos():
             [b"test", EndOfSequence()],
         ],
         log_weights=[np.log(5), np.log(2), np.log(3)],
-        log_probs=[0.0, 0.0, 0.0],
     )
     posterior = sequences.decoded_posterior
     assert len(posterior) == 2
@@ -210,7 +191,6 @@ def test_invalid_utf8_sequences():
             [b"world", EndOfSequence()],
         ],
         log_weights=[np.log(4), np.log(2), np.log(4)],
-        log_probs=[0.0, 0.0, 0.0],
     )
     posterior = sequences.decoded_posterior
     assert len(posterior) == 2
@@ -221,9 +201,7 @@ def test_invalid_utf8_sequences():
 
 def test_empty_sequence_with_eos():
     # Test sequence that's just EOS
-    sequences = Sequences(
-        contexts=[[EndOfSequence()]], log_weights=[0.0], log_probs=[0.0]
-    )
+    sequences = Sequences(contexts=[[EndOfSequence()]], log_weights=[0.0])
     posterior = sequences.decoded_posterior
     assert len(posterior) == 1
     assert posterior[""] == 1.0
@@ -237,7 +215,6 @@ def test_multi_byte_utf8():
             ["こんにちは".encode("utf-8"), EndOfSequence()],
         ],
         log_weights=[np.log(3), np.log(7)],
-        log_probs=[0.0, 0.0],
     )
     posterior = sequences.decoded_posterior
     assert len(posterior) == 2
@@ -250,7 +227,6 @@ def test_all_negative_infinity_weights():
     sequences = Sequences(
         contexts=[[b"hello", EndOfSequence()], [b"world", EndOfSequence()]],
         log_weights=[-np.inf, -np.inf],
-        log_probs=[0.0, 0.0],
     )
 
     # Check all the derived quantities
@@ -263,3 +239,14 @@ def test_all_negative_infinity_weights():
     # Check that posterior methods handle this case
     assert len(sequences.posterior) == 2
     assert len(sequences.decoded_posterior) == 2
+
+
+def test_shows():
+    sequences = Sequences(
+        contexts=[[b"a", b"b", b"c", EOS], [b"a", b"b", b"d"]],
+        log_weights=[np.log(1), np.log(9)],
+    )
+    sequences.show()
+    repr(sequences)
+    sequences._repr_html_()
+    str(sequences)

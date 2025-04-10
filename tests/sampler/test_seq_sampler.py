@@ -3,7 +3,7 @@ import numpy as np
 
 
 from genlm.control.potential import Potential
-from genlm.control.sampler.sequence import SMC, Sequences, SequenceModel
+from genlm.control.sampler.sequence import SMC, SequenceModel
 from genlm.control.sampler.token import DirectTokenSampler
 
 from hypothesis import strategies as st, settings, given
@@ -137,26 +137,6 @@ async def test_smc_weights(params):
         logZ = sum([(await p.logw_next(seq[:n])).sum() for n in range(len(seq))])
         twist = await critic.score(seq)
         assert np.isclose(logw, logZ + logeps + twist)
-
-
-def test_sequences():
-    sequences = Sequences(
-        contexts=[["a", "b", "c"], ["a", "b", "d"]],
-        log_weights=[np.log(1), np.log(9)],
-        log_probs=[np.log(1), np.log(9)],
-    )
-
-    assert np.allclose(sequences.normalized_weights, [0.1, 0.9])
-
-    assert sequences[0] == (["a", "b", "c"], np.log(1))
-    assert sequences[1] == (["a", "b", "d"], np.log(9))
-
-    assert len(sequences) == 2
-    assert sequences.logp == np.log(1) + np.log(9)
-    assert sequences.log_total == np.log(10)
-
-    sequences._repr_html_()
-    sequences.show()
 
 
 async def test_sequence_model_invalid_start_weight():

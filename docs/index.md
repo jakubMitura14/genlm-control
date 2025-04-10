@@ -4,8 +4,7 @@
 [![Tests](https://github.com/genlm/genlm-control/actions/workflows/pytest.yml/badge.svg)](https://genlm.github.io/genlm-control/)
 [![codecov](https://codecov.io/github/genlm/genlm-control/graph/badge.svg?token=665ffkDXvZ)](https://codecov.io/github/genlm/genlm-control)
 
-
-GenLM Control is a library for controlled generation with programmable constraints. It leverages sequential Monte Carlo (SMC) methods to efficiently generate text that satisfies constraints or preferences encoded by arbitrary potential functions.
+GenLM Control is a library for controlled generation from language models using programmable constraints. It leverages sequential Monte Carlo (SMC) methods to efficiently generate text that satisfies constraints or preferences encoded by arbitrary potential functions.
 
 
 ## Quick Start
@@ -127,7 +126,7 @@ llm.prompt_ids = llm.model.tokenizer.apply_chat_template(
 )
 
 # Create a schema potential
-schema_potential = JsonSchema(llm, person_schema)
+schema_potential = JsonSchema(book_schema)
 
 # Coerce the schema potential so that it operates on the token type of the language model.
 coerced_schema = schema_potential.coerce(llm, f=b"".join)

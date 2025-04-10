@@ -1,4 +1,4 @@
-from genlm.control import InferenceEngine
+from genlm.control import SMC
 from genlm.control.potential import PromptedLLM, BoolFSA, Potential
 from genlm.control.sampler import direct_token_sampler, eager_token_sampler
 
@@ -33,7 +33,7 @@ async def main():
 
     # Create an inference engine. This is the main object that will be used for
     # generation using sequence Monte Carlo (SMC).
-    engine = InferenceEngine(sampler)
+    engine = SMC(sampler)
 
     # Run SMC with 10 particles, a maximum of 10 tokens, and an ESS threshold of 0.5.
     sequences = await engine(n_particles=10, max_tokens=10, ess_threshold=0.5)
@@ -57,7 +57,7 @@ async def main():
     sampler = direct_token_sampler(product)
 
     # Create an inference engine.
-    engine = InferenceEngine(sampler)
+    engine = SMC(sampler)
 
     # Run SMC with 10 particles, 10 tokens, and an ESS threshold of 0.5.
     sequences = await engine(n_particles=10, max_tokens=10, ess_threshold=0.5)
@@ -91,7 +91,7 @@ async def main():
     sampler = eager_token_sampler(product, best_fsa)
 
     # Create an inference engine.
-    engine = InferenceEngine(sampler)
+    engine = SMC(sampler)
 
     # Run SMC with 10 particles, 10 tokens, and an ESS threshold of 0.5.
     sequences = await engine(n_particles=10, max_tokens=10, ess_threshold=0.5)
@@ -172,7 +172,7 @@ async def main():
     # but maintains the same proper weighting guarantees as the eager sampler.
     sampler = eager_token_sampler(product, best_fsa)
     critic = sentiment_analysis.coerce(sampler.target, f=b"".join)
-    engine = InferenceEngine(sampler, critic=critic)
+    engine = SMC(sampler, critic=critic)
 
     # Run SMC with 10 particles, 10 tokens, and an ESS threshold of 0.5.
     # We also time this inference run for comparison with the next example.
@@ -194,7 +194,7 @@ async def main():
     critic = critic.to_autobatched()
 
     # Create an inference engine.
-    engine = InferenceEngine(sampler, critic=critic)
+    engine = SMC(sampler, critic=critic)
 
     # Run SMC with 10 particles, 10 tokens, and an ESS threshold of 0.5.
     # If you are running this on a machine with a GPU, you should

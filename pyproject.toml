@@ -18,7 +18,7 @@ dependencies = [
     "genlm-grammar==0.2.0a0",
     "genlm-backend==0.1.0a1",
     "llamppl",
-    "arsenal @ git+https://github.com/timvieira/arsenal.git@main",
+    "arsenal @ git+https://github.com/timvieira/arsenal.git",
     "IPython",
     "numpy",
     "torch",

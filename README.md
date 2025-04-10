@@ -59,6 +59,10 @@ sequences = await token_sampler.smc(
 
 # Show the inferred posterior distribution over complete UTF-8 decodable sequences.
 sequences.decoded_posterior
+# Example output:
+# {
+#   ' good😍': 1.0,
+# }
 ```
 
 ### Controlling an LLM with a JSON schema
@@ -153,6 +157,11 @@ sequences = await token_sampler.smc(
 
 # Show the inferred posterior distribution over complete UTF-8 decodable sequences.
 sequences.decoded_posterior
+# Example output:
+# {
+#   '{"title": "The Lord of the Rings", "pages": 1200, "genre": "fiction"}': 0.5008318164809697,
+#   '{"title": "The Great Gatsby", "pages": 178, "genre": "fiction"}': 0.49916818351903025,
+# }
 ```
 
 ### More examples

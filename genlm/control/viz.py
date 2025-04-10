@@ -18,7 +18,7 @@ class InferenceVisualizer:
         # create the visualizer
         viz = InferenceVisualizer()
         # run inference and save the record to a JSON file
-        sequences = await engine(
+        sequences = await token_sampler.smc(
             n_particles=10,
             max_tokens=20,
             ess_threshold=0.5,

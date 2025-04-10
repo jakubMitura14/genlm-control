@@ -6,7 +6,6 @@
 
 GenLM Control is a library for controlled generation from language models using programmable constraints. It leverages sequential Monte Carlo (SMC) methods to efficiently generate text that satisfies constraints or preferences encoded by arbitrary potential functions.
 
-
 ## Quick Start
 
 To install the package, clone the repository and run `pip install .`:
@@ -23,22 +22,22 @@ See [DEVELOPING.md](DEVELOPING.md) for details on how to install the project for
 
 ### Controlling an LLM with a regular expression
 
-This is a simple example demonstrating how to constrain an LLM using a regular expression. For examples demonstrating the full range of features, see the [examples](https://github.com/genlm/genlm-control/tree/main/examples/getting_started.py).
+This is a simple example demonstrating how to constrain an LLM using a regular expression.
 
 ```python
 from genlm.control import PromptedLLM, BoolFSA, AWRS
 
-# Create a language model potential
+# Create a language model potential.
 llm = PromptedLLM.from_name("gpt2")
 llm.set_prompt_from_str("Sequential Monte Carlo is")
 
-# Create a finite-state automaton potential using a regular expression
+# Create a finite-state automaton potential using a regular expression.
 fsa = BoolFSA.from_regex(r"\s(good😍|bad🙁)")
 
 # Coerce the FSA so that it operates on the token type of the language model.
 coerced_fsa = fsa.coerce(llm, f=b"".join)
 
-# Create a token sampler that combines the language model and FSA
+# Create a token sampler that combines the language model and FSA.
 token_sampler = AWRS(llm, coerced_fsa)
 
 # Generate text using SMC.
@@ -51,7 +50,7 @@ sequences = await token_sampler.smc(
     verbosity=1 # Print particles at each step
 )
 
-# Show the inferred posterior distribution over complete UTF-8 decodable sequences
+# Show the inferred posterior distribution over complete UTF-8 decodable sequences.
 sequences.decoded_posterior
 ```
 
@@ -102,9 +101,9 @@ book_schema = {
     },
 }
 
-# Create a language model potential
-# Since this task is harder, we use a larger model than GPT2.
-# (You will need to login via the Hugging Face CLI and gain access to the model.)
+# Create a language model potential.
+# Since this task is harder, we use a larger model.
+# (You will need to login via the Hugging Face CLI and have access to the model.)
 llm = PromptedLLM.from_name(
     "meta-llama/Llama-3.2-1B-Instruct",
     eos_tokens=[b"<|eom_id|>", b"<|eot_id|>"],
@@ -112,7 +111,8 @@ llm = PromptedLLM.from_name(
 )
 
 # Set the prompt for the language model.
-# We prompt with an example of a schema and a generated object,
+# Since we are using an instruction-tuned model, we use the chat template.
+# The prompt contains an example of a schema and a generated object,
 # followed by the schema we want to match.
 llm.prompt_ids = llm.model.tokenizer.apply_chat_template(
     conversation=[
@@ -125,13 +125,13 @@ llm.prompt_ids = llm.model.tokenizer.apply_chat_template(
     add_generation_prompt=True
 )
 
-# Create a schema potential
+# Create a schema potential.
 schema_potential = JsonSchema(book_schema)
 
 # Coerce the schema potential so that it operates on the token type of the language model.
 coerced_schema = schema_potential.coerce(llm, f=b"".join)
 
-# Create a token sampler that combines the language model and the schema potential
+# Create a token sampler that combines the language model and the schema potential.
 token_sampler = AWRS(llm, coerced_schema)
 
 # Generate text using SMC.
@@ -144,9 +144,13 @@ sequences = await token_sampler.smc(
     verbosity=1 # Print particles at each step
 )
 
-# Show the inferred posterior distribution over complete UTF-8 decodable sequences
+# Show the inferred posterior distribution over complete UTF-8 decodable sequences.
 sequences.decoded_posterior
 ```
+
+### More examples
+
+See the [examples](https://github.com/genlm/genlm-control/tree/main/examples/getting_started.py) to get an overview of the full range of features, including how to specify custom potential functions.
 
 ## Development
 

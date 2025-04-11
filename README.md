@@ -5,6 +5,7 @@
 [![Docs](https://github.com/genlm/genlm-control/actions/workflows/docs.yml/badge.svg)](https://genlm.github.io/genlm-control/)
 [![Tests](https://github.com/genlm/genlm-control/actions/workflows/pytest.yml/badge.svg)](https://genlm.github.io/genlm-control/)
 [![codecov](https://codecov.io/github/genlm/genlm-control/graph/badge.svg?token=665ffkDXvZ)](https://codecov.io/github/genlm/genlm-control)
+[![PyPI](https://img.shields.io/pypi/v/genlm-control?label=pypi)](https://pypi.org/project/genlm-control/)
 
 </div>
 

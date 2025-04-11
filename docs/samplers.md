@@ -2,7 +2,7 @@
 
 [TokenSamplers][genlm.control.sampler.token.TokenSampler]  are the objects that propose new tokens during generation. They generate individual tokens $x$ given a `context` sequence. Each sample $x$ is attached with a log importance weight $w$.[^1]
 
-[^1]: Tokens samplers also return a log-probability $p$ which corresponds to the log-probability of all the random choices made by the sampler and is returned for testing purposes.
+[^1]: Tokens samplers also return a log-probability which corresponds to the log-probability of all the random choices made by the sampler. It is returned for testing purposes and is not used during generation.
 
 ## Direct Token Sampling
 
@@ -34,7 +34,7 @@ token, logw, _ = await token_sampler.sample(context)
 
 ## Set-based Token Sampling
 
-A [`SetTokenSampler`][genlm.control.sampler.token.SetTokenSampler] samples tokens by first sampling a weighted subset of tokens using a [`SetSampler`][genlm.control.sampler.set.SetSampler], and then selects one token from the set proportional to its weight. These samplers are commonly used to sample tokens from a language model's vocabulary while enforcing non-boolean byte-level constraints. This algorithm is described in Appendix C of [Loula et al. (2025)](https://openreview.net/pdf?id=xoXn62FzD0).
+A [`SetTokenSampler`][genlm.control.sampler.token.SetTokenSampler] samples tokens by first sampling a weighted subset of tokens using a [`SetSampler`][genlm.control.sampler.set.SetSampler], and then selects one token from the set proportional to its weight. These samplers are commonly used to sample tokens from a language model while enforcing non-boolean byte-level constraints. This algorithm is described in Appendix C of [Loula et al. (2025)](https://openreview.net/pdf?id=xoXn62FzD0).
 
 ### Set Samplers
 
@@ -48,7 +48,7 @@ Both of these set samplers are designed to work with two types of potentials:
 1. An **iterable potential** which has a vocabulary of iterable tokens (e.g., over byte sequences)
 2. An **item potential** which has a vocabulary of items which form the elements of iterable tokens (e.g., over individual bytes)
 
-These samplers can be used, for example, to sample tokens from a language model's vocabulary while enforcing byte-level constraints.
+In common scenarios, the iterable potential is a language model and the item potential is a byte-level potential.
 
 ```python
 # Create a set-based token sampler using a set sampler
@@ -73,13 +73,13 @@ eager_sampler = eager_token_sampler(llm, fsa)
 
 ## Sampler Selection Guide for Controlled Generation
 
-The following table provides general guidelines for selecting a sampler in the context of controlled generation from an LLM. Note that these are only guidelines and the best sampler may vary depending on the specific controlled generation task.
+The following table provides general guidelines for selecting a sampler in the context of controlled generation from an LLM. Note that the best sampler may vary depending on the specific controlled generation task.
 
 | Scenario | Recommended Sampler | Notes |
 |----------|-------------------|--------|
 | No token-level constraints | `DirectTokenSampler` | Basic LM sampling; used when all constraints are enforced using `critics` |
 | Boolean constraints (e.g., FSA, CFG, JSON schema) | `AWRS` | Efficient, low-variance, and exact sampling from product of a LLM and constraint |
-| Byte-level non-boolean constraints| `eager_token_sampler` | More efficient than sampling directly from the product of the LLM and constraint, but introduces variance |
+| Byte-level non-boolean constraints| `eager_token_sampler` | Generally less efficient than `AWRS`, but more flexible |
 
 ## Custom Token Samplers
 

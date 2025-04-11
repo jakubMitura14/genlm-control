@@ -15,12 +15,10 @@ See the [docs](https://genlm.github.io/genlm-control) for details.
 
 ## Quick Start
 
-To install the package, clone the repository and run `pip install .`:
+This library can be installed using pip:
 
 ```bash
-git clone https://github.com/genlm/genlm-control.git
-cd genlm-control
-pip install .
+pip install genlm-control
 ```
 
 See [DEVELOPING.md](DEVELOPING.md) for details on how to install the project for development.

@@ -426,46 +426,6 @@ def prefixes(z):
         yield z[:p]
 
 
-class max_munch:
-    def __init__(self, tokens):
-        self._end = object()
-        self.root = self.make_trie(tokens)
-
-    def __call__(self, x):
-        if len(x) == 0:
-            return ()
-        else:
-            t, ys = self.munch(x)
-            return (ys,) + self(x[t:])
-
-    def munch(self, x):
-        (t, ys) = next(self.traverse(x, 0, self.root))
-        return (t, ys)
-
-    def make_trie(self, words):
-        root = dict()
-        for word in words:
-            curr = root
-            for letter in word:
-                curr = curr.setdefault(letter, {})
-            curr[self._end] = self._end
-        return root
-
-    def traverse(self, query, t, node):
-        """
-        Enumerate (in order of longest to shortest) the strings in the trie matching
-        prefixes of `query`.
-        """
-        if node == self._end:
-            return
-        if t < len(query):
-            x = query[t]
-            if x in node:
-                yield from self.traverse(query, t + 1, node[x])
-        if self._end in node:
-            yield (t, query[:t])  # post order gives the longest match
-
-
 def color_code_alignment(seq1, seq2):
     colored_seq1, colored_seq2 = format_alignment(seq1, seq2)
     print("Sequence 1:")

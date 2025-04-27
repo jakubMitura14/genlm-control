@@ -1,9 +1,20 @@
 import torch
 import warnings
 import numpy as np
-from typing import NamedTuple
+from typing import NamedTuple, Optional
 from arsenal.maths import logsumexp
 from genlm.control.potential.base import Potential
+from genlm.control.constant import EOS
+
+# Try importing openai, but don't fail if it's not installed
+# unless the user tries to use the OpenAI functionality.
+_openai_client = None
+_openai_library = None
+try:
+    import openai
+    _openai_library = openai
+except ImportError:
+    openai = None # type: ignore
 
 
 def load_model_by_name(name, backend, **kwargs):
@@ -57,42 +68,87 @@ class PromptedLLM(Potential):
     This class wraps an `AsyncLM` instance.
     """
 
-    def __init__(self, llm, prompt_ids=None, eos_tokens=None, temperature=1):
-        """`
+    def __init__(
+        self,
+        llm=None, # Make llm optional
+        prompt_ids=None,
+        eos_tokens=None,
+        temperature=1,
+        # --- OpenAI API specific arguments ---
+        openai_model_name: Optional[str] = None,
+        openai_base_url: Optional[str] = None,
+        openai_api_key: Optional[str] = None,
+        openai_system_prompt: str = "You are a helpful assistant.",
+    ):
+        """
         Initializes the PromptedLLM potential.
 
+        Can be initialized either with a local LLM backend (vLLM/HF) or
+        with parameters for an OpenAI-compatible API.
+
         Args:
-            llm (AsyncLM): The language model to use.
-            prompt_ids (list[int], optional): Optional prompt to use as a prompt prefix for all input contexts.
-                Must be a list of token IDs. Defaults to None. The prompt ids can be set post-init via `prompt` or `prompt_ids`.
-            eos_tokens (list[bytes], optional): List of tokens to treat as end-of-sequence tokens.
-                Defaults to the EOS token of the language model's tokenizer.
-            temperature (float, optional): The temperature to apply to the language model's logits. Defaults to 1.
+            llm (AsyncLM, optional): The language model backend (vLLM/HF). Required if not using OpenAI API.
+            prompt_ids (list[int], optional): Optional prompt prefix for local LLM backends.
+            eos_tokens (list[bytes], optional): EOS tokens for local LLM backends.
+            temperature (float, optional): Temperature for sampling/probabilities.
+            openai_model_name (str, optional): Model name for OpenAI API. Required if using OpenAI API.
+            openai_base_url (str, optional): Base URL for OpenAI-compatible API. Required if using OpenAI API.
+            openai_api_key (str, optional): API key for OpenAI API.
+            openai_system_prompt (str): System prompt to use with OpenAI API.
 
         Raises:
-            ValueError: If any EOS token is not in the language model vocabulary.
+            ValueError: If initialization parameters are inconsistent.
         """
-        self.model = llm
-        self.prompt_ids = prompt_ids or []
+        self._is_openai_mode = False
+        if openai_model_name and openai_base_url:
+            if llm is not None:
+                raise ValueError("Cannot provide both 'llm' and OpenAI API parameters.")
+            if openai is None:
+                 raise ImportError("The 'openai' library is required to use the OpenAI API mode. Please install it (`pip install openai`).") # pragma: no cover
+            self._is_openai_mode = True
+            self.openai_model_name = openai_model_name
+            self.openai_base_url = openai_base_url
+            self.openai_api_key = openai_api_key
+            self.openai_system_prompt = openai_system_prompt
+            self._openai_client = _openai_library.OpenAI(
+                base_url=self.openai_base_url,
+                api_key=self.openai_api_key,
+            )
+            # For OpenAI mode, vocab is less relevant in the traditional sense
+            # We'll initialize Potential with an empty vocab for now.
+            # EOS handling will be done via stop sequences in the API call if needed.
+            super().__init__(vocabulary=[])
+            self.temperature = temperature
+            # Prompt handling needs to be different for OpenAI
+            self._openai_prompt_str: Optional[str] = None
+            # Note: prompt_ids, eos_tokens, token_maps are not used in OpenAI mode
 
-        if not eos_tokens:
-            self._eos_tokens = [llm.byte_vocab[self.model.tokenizer.eos_token_id]]
+        elif llm is not None:
+            # --- Existing Local LLM Backend Initialization ---
+            self.model = llm
+            self.prompt_ids = prompt_ids or []
+
+            if not eos_tokens:
+                self._eos_tokens = [llm.byte_vocab[self.model.tokenizer.eos_token_id]]
+            else:
+                self._eos_tokens = eos_tokens
+
+            assert len(set(self._eos_tokens)) == len(self._eos_tokens), (
+                "duplicate eos tokens"
+            )
+
+            self.token_maps = TokenMappings.create(
+                decode=llm.byte_vocab, eos_tokens=self._eos_tokens
+            )
+
+            self.temperature = temperature
+
+            V = [x for x in self.token_maps.decode if x not in self._eos_tokens]
+            super().__init__(vocabulary=V)
+            # --- End Existing Init ---
         else:
-            self._eos_tokens = eos_tokens
+             raise ValueError("Must provide either 'llm' (for local backends) or 'openai_model_name' and 'openai_base_url' (for OpenAI API).")
 
-        assert len(set(self._eos_tokens)) == len(self._eos_tokens), (
-            "duplicate eos tokens"
-        )
-
-        self.token_maps = TokenMappings.create(
-            decode=llm.byte_vocab, eos_tokens=self._eos_tokens
-        )
-
-        self.temperature = temperature
-
-        V = [x for x in self.token_maps.decode if x not in self._eos_tokens]
-
-        super().__init__(vocabulary=V)
 
     @classmethod
     def from_name(
@@ -102,17 +158,22 @@ class PromptedLLM(Potential):
         eos_tokens=None,
         prompt_ids=None,
         temperature=1.0,
+        # --- Add OpenAI args ---
+        openai_base_url: Optional[str] = None,
+        openai_api_key: Optional[str] = None,
+        openai_system_prompt: str = "You are a helpful assistant.",
         **kwargs,
     ):
-        """Create a `PromptedLLM` from a HugginFace model name.
+        """Create a `PromptedLLM` from a model name (HF/vLLM) or OpenAI API params.
 
         Args:
-            name (str): Name of the model to load
-            backend (str, optional): `AsyncLM` backend to use:\n
-                * 'vllm' to instantiate an `AsyncVirtualLM`; ideal for GPU usage\n
-                * 'hf' for an `AsyncTransformer`; ideal for CPU usage\n
-                * 'mock' for a `MockAsyncLM`; ideal for testing.\n
-                Defaults to 'vllm' if CUDA is available, otherwise 'hf'.
+            name (str): Name of the model (used for HF/vLLM backend or as openai_model_name).
+            backend (str, optional): `AsyncLM` backend ('vllm', 'hf') or 'openai'.
+                Defaults to 'vllm' if CUDA available, else 'hf', if openai_base_url not set.
+                If openai_base_url is set, backend defaults to 'openai'.
+            openai_base_url (str, optional): Base URL for OpenAI-compatible API. If set, forces 'openai' mode.
+            openai_api_key (str, optional): API key for OpenAI API.
+            openai_system_prompt (str): System prompt to use with OpenAI API.
             eos_tokens (list[bytes], optional): List of tokens to treat as end-of-sequence tokens.
                 Defaults to the EOS token of the language model's tokenizer.
             prompt_ids (list[int], optional): Optional prompt to use as a prompt prefix for all input contexts.
@@ -123,11 +184,30 @@ class PromptedLLM(Potential):
         Returns:
             (PromptedLLM): An instance of PromptedLLM
         """
-        backend = backend or ("vllm" if torch.cuda.is_available() else "hf")
-        model = load_model_by_name(name, backend=backend, **kwargs)
-        return cls(
-            model, prompt_ids=prompt_ids, eos_tokens=eos_tokens, temperature=temperature
-        )
+        if openai_base_url:
+            backend = 'openai' # Force openai mode if URL is given
+
+        if backend == 'openai':
+            if not openai_base_url:
+                raise ValueError("openai_base_url must be provided for 'openai' backend.")
+            return cls(
+                openai_model_name=name, # Use 'name' as the model identifier
+                openai_base_url=openai_base_url,
+                openai_api_key=openai_api_key,
+                openai_system_prompt=openai_system_prompt,
+                temperature=temperature,
+            )
+        else:
+            # --- Existing backend loading ---
+            backend = backend or ("vllm" if torch.cuda.is_available() else "hf")
+            model = load_model_by_name(name, backend=backend, **kwargs)
+            return cls(
+                model,
+                prompt_ids=prompt_ids,
+                eos_tokens=eos_tokens,
+                temperature=temperature,
+            )
+            # --- End existing ---
 
     @property
     def eos_tokens(self):
@@ -164,17 +244,20 @@ class PromptedLLM(Potential):
         if not isinstance(prompt_str, str):
             raise ValueError(
                 f"Prompt must a string got {type(prompt_str)}. "
-                f"To set the prompt from a list of token IDs, use prompt_ids."
+                f"To set the prompt from a list of token IDs (local LLM mode), use prompt_ids."
             )
 
-        if prompt_str.endswith(" "):
-            warnings.warn(
-                "Prompt ends with whitespace, which may affect tokenization. "
-                "Consider removing trailing whitespace.",
-                stacklevel=2,
-            )
-
-        self.prompt_ids = self.model.tokenizer.encode(prompt_str)
+        if self._is_openai_mode:
+             self._openai_prompt_str = prompt_str
+        else:
+            # Existing logic for local LLMs
+            if prompt_str.endswith(" "):
+                warnings.warn(
+                    "Prompt ends with whitespace, which may affect tokenization. "
+                    "Consider removing trailing whitespace.",
+                    stacklevel=2,
+                )
+            self.prompt_ids = self.model.tokenizer.encode(prompt_str)
 
     def encode_tokens(self, tokens):
         """Encode a list of byte tokens to a list of token IDs in
@@ -229,13 +312,16 @@ class PromptedLLM(Potential):
         Returns:
             (float): The log probability of `context`.
         """
+        if self._is_openai_mode:
+            raise NotImplementedError("log_probability is not supported in OpenAI API mode.")
         if not context:
             return 0
-
         context_ids = self.encode_tokens(context)
         return await self._log_probability(context_ids)
 
     async def _log_probability(self, context_ids):
+        if self._is_openai_mode:
+             raise NotImplementedError("_log_probability is not supported in OpenAI API mode.")
         prefixes = [self.prompt_ids + context_ids[:i] for i in range(len(context_ids))]
         log_ps = self._maybe_temper(
             await self.model.batch_next_token_logprobs(prefixes)
@@ -262,6 +348,8 @@ class PromptedLLM(Potential):
         Returns:
             (float): The log probability of `context`.
         """
+        if self._is_openai_mode:
+            raise NotImplementedError("prefix is not supported in OpenAI API mode.")
         return await self.log_probability(context)
 
     async def complete(self, context):
@@ -276,6 +364,8 @@ class PromptedLLM(Potential):
         Returns:
             (float): The log probability of the context.
         """
+        if self._is_openai_mode:
+            raise NotImplementedError("complete is not supported in OpenAI API mode.")
         context_ids = self.encode_tokens(context)
         logp_context = await self._log_probability(context_ids)
         logp_next = self._maybe_temper(
@@ -314,6 +404,8 @@ class PromptedLLM(Potential):
         Returns:
             (LazyWeights): Log probabilities for next tokens and EOS.
         """
+        if self._is_openai_mode:
+            raise NotImplementedError("logw_next is not supported in OpenAI API mode.")
         logw_next = self._maybe_temper(
             await self.model.next_token_logprobs(
                 self.prompt_ids + self.encode_tokens(context)
@@ -330,6 +422,8 @@ class PromptedLLM(Potential):
         Returns:
             (List[LazyWeights]): Log probabilities for next tokens and EOS for each context.
         """
+        if self._is_openai_mode:
+            raise NotImplementedError("batch_logw_next is not supported in OpenAI API mode.")
         logw_nexts = self._maybe_temper(
             await self.model.batch_next_token_logprobs(
                 [self.prompt_ids + self.encode_tokens(context) for context in contexts]
@@ -340,37 +434,110 @@ class PromptedLLM(Potential):
             for logw_next in logw_nexts.float().cpu().numpy()
         ]
 
+    async def generate_completion(
+        self,
+        user_message: str,
+        max_tokens: Optional[int] = None,
+        stop: Optional[list[str]] = None,
+        thinking: bool = False, # Add thinking parameter
+    ) -> str:
+        """
+        Generates a completion using the configured OpenAI-compatible API.
+
+        Args:
+            user_message (str): The user's message/query.
+            max_tokens (int, optional): Maximum tokens to generate.
+            stop (list[str], optional): Stop sequences for generation.
+            thinking (bool): Whether to include detailed thinking in system prompt.
+
+        Returns:
+            str: The generated content from the assistant.
+
+        Raises:
+            RuntimeError: If not configured for OpenAI API mode.
+            ImportError: If openai library is not installed.
+            openai.APIError: If the API call fails.
+        """
+        if not self._is_openai_mode:
+            raise RuntimeError("generate_completion can only be used in OpenAI API mode.")
+        if _openai_client is None:
+             raise ImportError("The 'openai' library is required. Please install it (`pip install openai`).") # pragma: no cover
+
+        messages = []
+        system_content = self.openai_system_prompt
+        if thinking:
+            system_content = f"detailed thinking on, {system_content}" # Prepend thinking instruction
+        messages.append({"role": "system", "content": system_content})
+
+        # Add the stored prompt as a previous user message if it exists
+        if self._openai_prompt_str:
+             # This assumes the prompt acts like an initial user instruction
+             # or context. Adjust role if needed (e.g., assistant context).
+             messages.append({"role": "user", "content": self._openai_prompt_str})
+             # Optionally add a dummy assistant message if the prompt expects
+             # the *next* message to be the user query.
+             # messages.append({"role": "assistant", "content": "Okay, I understand the context."})
+
+
+        messages.append({"role": "user", "content": user_message})
+
+        try:
+            response = await self._openai_client.chat.completions.create(
+                model=self.openai_model_name,
+                messages=messages,
+                temperature=self.temperature,
+                max_tokens=max_tokens,
+                stop=stop,
+                # Note: logprobs are not standard in chat completions for *all* tokens
+            )
+            # Handle potential None content or missing choices
+            if response.choices and response.choices[0].message and response.choices[0].message.content:
+                 return response.choices[0].message.content.strip()
+            else:
+                 return "" # Return empty string if no valid response content
+        except _openai_library.APIError as e:
+            # Handle API errors gracefully
+            print(f"OpenAI API error: {e}") # Or use proper logging
+            raise # Re-raise the exception
+
+
     def __repr__(self):
         return f"PromptedLLM(prompt={self.prompt!r})"
 
     def spawn(self):
         """
-        Spawn a new PromptedLLM with the same prompt and eos tokens.
-
-        Returns:
-            (PromptedLLM): A new PromptedLLM with the same prompt and eos tokens.
-
-        Note:
-            This is a shallow copy. The new PromptedLLM will share the underlying AsyncLM instance.
+        Spawn a new PromptedLLM instance.
+        Copies configuration (local backend or OpenAI API).
+        Note: Shares the underlying AsyncLM or OpenAI client instance.
         """
-        return PromptedLLM(
-            self.model,
-            prompt_ids=self.prompt_ids.copy(),
-            eos_tokens=self._eos_tokens.copy(),
-            temperature=self.temperature,
-        )
+        if self._is_openai_mode:
+            new_instance = PromptedLLM(
+                openai_model_name=self.openai_model_name,
+                openai_base_url=self.openai_base_url,
+                openai_api_key=self.openai_api_key,
+                openai_system_prompt=self.openai_system_prompt,
+                temperature=self.temperature,
+            )
+            new_instance._openai_prompt_str = self._openai_prompt_str
+            # Share the client instance
+            new_instance._openai_client = self._openai_client
+            return new_instance
+        else:
+            # Existing spawn logic for local LLMs
+            return PromptedLLM(
+                self.model,
+                prompt_ids=self.prompt_ids.copy(),
+                eos_tokens=self._eos_tokens.copy(),
+                temperature=self.temperature,
+            )
 
     def spawn_new_eos(self, eos_tokens):
         """
-        Create a new PromptedLLM with a different set of end-of-sequence tokens.
-
-        Args:
-            eos_tokens (list[bytes]): A list of tokens to treat as end-of-sequence tokens.
-
-        Returns:
-            (PromptedLLM): A new PromptedLLM with the specified end-of-sequence tokens.
-                The new model will have the same prompt_ids as `self`.
+        Create a new PromptedLLM with different EOS tokens (local LLM mode only).
+        Raises error in OpenAI mode.
         """
+        if self._is_openai_mode:
+            raise NotImplementedError("spawn_new_eos is not applicable in OpenAI API mode.")
         return PromptedLLM(
             self.model,
             prompt_ids=self.prompt_ids.copy(),
@@ -379,4 +546,8 @@ class PromptedLLM(Potential):
         )
 
     def to_autobatched(self):
-        raise ValueError("PromptedLLMs are autobatched by default.")
+        if self._is_openai_mode:
+             # Autobatching is handled differently or not applicable for API calls
+             warnings.warn("to_autobatched() called in OpenAI mode; has no effect.")
+             return self
+        raise ValueError("PromptedLLMs are autobatched by default.") # Keep original error for local mode
